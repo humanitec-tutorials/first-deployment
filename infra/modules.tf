@@ -6,6 +6,7 @@ resource "platform-orchestrator_provider" "google" {
   version_constraint = "~> 4.74"
   configuration = jsonencode({
     region      = var.gcp_region
+    zone        = var.gcp_zone
     project     = var.gcp_project_id
     credentials = "/providers/google-service-account/credentials.json"
   })
@@ -354,7 +355,7 @@ resource "platform-orchestrator_module" "score-k8s" {
     kubernetes = "kubernetes.default"
   }
   module_inputs = jsonencode({
-    namespace = "$${resources.ns.outputs.name}"
+    namespace = "$${resources.ns.outputs.namespace}"
   })
   dependencies = {
     ns = {

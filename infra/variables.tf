@@ -6,6 +6,10 @@ variable "gcp_region" {
   description = "GCP region"
 }
 
+variable "gcp_zone" {
+  description = "GCP zone"
+}
+
 variable "humanitec_org" {
   description = "Humanitec organization name"
 }
