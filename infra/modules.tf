@@ -274,8 +274,8 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
 
 resource "platform-orchestrator_module_rule" "ansible_score_workload" {
   module_id = platform-orchestrator_module.ansible_score_workload.id
-  env_id = "score"
-  project_id = "tutorial"
+  env_id = platform-orchestrator_environment.score_environment.id
+  project_id = platform-orchestrator_project.project.id
 }
 
 resource "platform-orchestrator_module" "in-cluster-postgres" {

@@ -58,8 +58,8 @@ resource "platform-orchestrator_kubernetes_gke_runner" "runner" {
               ],
               securityContext = {
                 runAsNonRoot = false,
-                runAsUser = 0,
-                runAsGroup = 0
+                runAsUser    = 0,
+                runAsGroup   = 0
               }
             }
           ]
@@ -91,4 +91,21 @@ resource "platform-orchestrator_runner_rule" "runner_rule" {
 resource "platform-orchestrator_environment_type" "environment_type" {
   id           = "development"
   display_name = "Development Environment"
+}
+
+resource "platform-orchestrator_project" "project" {
+  id         = "tutorial"
+  depends_on = [platform-orchestrator_runner_rule.runner_rule]
+}
+
+resource "platform-orchestrator_environment" "dev_environment" {
+  id               = "dev"
+  project_id       = platform-orchestrator_project.project.id
+  env_type_id = platform-orchestrator_environment_type.environment_type.id
+}
+
+resource "platform-orchestrator_environment" "score_environment" {
+  id               = "score"
+  project_id       = platform-orchestrator_project.project.id
+  env_type_id = platform-orchestrator_environment_type.environment_type.id
 }

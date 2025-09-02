@@ -18,7 +18,7 @@ terraform {
 
     platform-orchestrator = {
       source  = "humanitec/platform-orchestrator"
-      version = "2.2.0"
+      version = ">= 2.4.0"
     }
   }
 
