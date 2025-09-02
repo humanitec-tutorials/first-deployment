@@ -284,6 +284,7 @@ resource "platform-orchestrator_module" "in-cluster-postgres" {
   provider_mapping = {
     helm = "helm.default"
   }
+  module_source = "inline"
   module_source_code = <<EOF
 terraform {
   required_providers {
