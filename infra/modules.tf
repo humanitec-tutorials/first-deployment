@@ -30,7 +30,7 @@ resource "platform-orchestrator_module" "bucket" {
   id            = "gcs-bucket"
   description   = "Module for a Google Cloud Storage bucket"
   resource_type = platform-orchestrator_resource_type.bucket.id
-  module_source = "git::https://github.com/htc-demo-00-gcp/2nd-call-demo-modules//bucket"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/bucket"
   provider_mapping = {
     google = "google.default"
   }
@@ -62,7 +62,7 @@ resource "platform-orchestrator_module" "queue" {
   id            = "pub-sub-topic"
   description   = "Module for a Google Cloud Pub/Sub topic"
   resource_type = platform-orchestrator_resource_type.queue.id
-  module_source = "git::https://github.com/htc-demo-00-gcp/2nd-call-demo-modules//pub-sub-topic"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/pub-sub-topic"
   provider_mapping = {
     google = "google.default"
   }
@@ -103,7 +103,7 @@ resource "platform-orchestrator_module" "k8s-namespace" {
   id            = "k8s-namespace"
   description   = "Module for a Kubernetes namespace"
   resource_type = platform-orchestrator_resource_type.k8s-namespace.id
-  module_source = "git::https://github.com/htc-demo-00-gcp/2nd-call-demo-modules//k8s-namespace"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/k8s-namespace"
   provider_mapping = {
     kubernetes = "kubernetes.default"
   }
@@ -133,7 +133,7 @@ resource "platform-orchestrator_module" "k8s-service-account" {
   id            = "k8s-service-account"
   description   = "Module for a Kubernetes service account"
   resource_type = platform-orchestrator_resource_type.k8s-service-account.id
-  module_source = "git::https://github.com/htc-demo-00-gcp/2nd-call-demo-modules//k8s-service-account"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/k8s-service-account"
   provider_mapping = {
     kubernetes = "kubernetes.default"
     google = "google.default"
@@ -245,7 +245,7 @@ resource "platform-orchestrator_module" "vm_fleet_example" {
   provider_mapping = {
     google = "google.default"
   }
-  module_source = "git::https://github.com/humanitec/module-definition-library//vm-fleet/google?ref=preview"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/vm-fleet/google"
 }
 
 resource "platform-orchestrator_module_rule" "vm_fleet_example" {
@@ -269,7 +269,7 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
     ssh_user = "$${resources.fleet.outputs.ssh_username}"
     ssh_private_key = "$${resources.fleet.outputs.ssh_private_key}"
   })
-  module_source = "git::https://github.com/humanitec/module-definition-library//score-workload/ansible?ref=preview"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/score-workload/ansible"
 }
 
 resource "platform-orchestrator_module_rule" "ansible_score_workload" {
@@ -351,7 +351,7 @@ resource "platform-orchestrator_module_rule" "in-cluster-postgres" {
 resource "platform-orchestrator_module" "score-k8s" {
   id = "score-k8s"
   resource_type = platform-orchestrator_resource_type.score-workload.id
-  module_source = "git::https://github.com/humanitec/module-definition-library//score-workload/kubernetes?ref=preview"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/score-workload/kubernetes"
   provider_mapping = {
     kubernetes = "kubernetes.default"
   }
