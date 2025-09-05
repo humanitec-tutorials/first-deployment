@@ -1,0 +1,20 @@
+workloads:
+  demo-app:
+    resources:
+      score-workload:
+        params:
+          containers:
+            main:
+              image: ghcr.io/astromechza/demo-app:latest
+          metadata:
+            name: demo-app
+          service:
+            ports:
+              web:
+                port: 80
+                targetPort: 8080
+        type: score-workload
+      db:
+        type: postgres
+    variables:
+      OVERRIDE_POSTGRES: postgres://${resources.db.outputs.username}:${resources.db.outputs.password}@${resources.db.outputs.hostname}:${resources.db.outputs.port}/${resources.db.outputs.database}

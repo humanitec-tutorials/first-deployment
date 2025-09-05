@@ -1,0 +1,11 @@
+apiVersion: score.dev/v1b1
+metadata:
+  name: demo-app
+containers:
+  main:
+    image: ghcr.io/astromechza/demo-app:latest
+service:
+  ports:
+    web:
+      port: 80
+      targetPort: 8080
