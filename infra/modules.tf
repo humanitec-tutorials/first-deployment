@@ -24,6 +24,8 @@ resource "platform-orchestrator_resource_type" "bucket" {
     }
   })
   is_developer_accessible = true
+
+  depends_on = [ platform-orchestrator_provider.google ]
 }
 
 resource "platform-orchestrator_module" "bucket" {
@@ -35,9 +37,8 @@ resource "platform-orchestrator_module" "bucket" {
     google = "google.default"
   }
   module_inputs = jsonencode({
-    google_storage_bucket_name = "first-deployment-bucket"
+    google_storage_bucket_name = "${local.prefix}-first-deployment-bucket"
   })
-  depends_on = [platform-orchestrator_provider.google]
 }
 
 resource "platform-orchestrator_module_rule" "bucket" {
@@ -56,6 +57,8 @@ resource "platform-orchestrator_resource_type" "queue" {
     }
   })
   is_developer_accessible = true
+
+  depends_on = [ platform-orchestrator_provider.google ]
 }
 
 resource "platform-orchestrator_module" "queue" {
@@ -67,7 +70,7 @@ resource "platform-orchestrator_module" "queue" {
     google = "google.default"
   }
   module_inputs = jsonencode({
-    topic_name = "first-deployment-topic"
+    topic_name = "${local.prefix}-first-deployment-topic"
   })
   depends_on = [platform-orchestrator_provider.google]
 }
@@ -97,6 +100,7 @@ resource "platform-orchestrator_resource_type" "k8s-namespace" {
     }
   })
   is_developer_accessible = true
+  depends_on = [ platform-orchestrator_provider.k8s ]
 }
 
 resource "platform-orchestrator_module" "k8s-namespace" {
@@ -107,7 +111,6 @@ resource "platform-orchestrator_module" "k8s-namespace" {
   provider_mapping = {
     kubernetes = "kubernetes.default"
   }
-  depends_on = [platform-orchestrator_provider.k8s]
 }
 
 resource "platform-orchestrator_module_rule" "k8s-namespace" {
@@ -126,6 +129,7 @@ resource "platform-orchestrator_resource_type" "k8s-service-account" {
     }
   })
   is_developer_accessible = true
+  depends_on = [ platform-orchestrator_provider.k8s ]
 }
 
 # TODO: This module is using a hardcoded GCP service account email, we should create a module and use it here as dependency
@@ -149,7 +153,6 @@ resource "platform-orchestrator_module" "k8s-service-account" {
     namespace                 = "$${resources.namespace.outputs.namespace}"
     project_id                = var.gcp_project_id
   })
-  depends_on = [platform-orchestrator_provider.k8s]
 }
 
 resource "platform-orchestrator_module_rule" "k8s-service-account" {
@@ -180,6 +183,7 @@ resource "platform-orchestrator_resource_type" "in-cluster-postgres" {
     }
   })
   is_developer_accessible = true
+  depends_on = [ platform-orchestrator_provider.k8s ]
 }
 
 resource "platform-orchestrator_provider" "helm" {
@@ -203,6 +207,7 @@ resource "platform-orchestrator_resource_type" "score-workload" {
     }
   })
   is_developer_accessible = true
+  depends_on = [ platform-orchestrator_provider.helm, platform-orchestrator_provider.ansibleplay ]
 }
 
 resource "platform-orchestrator_provider" "ansibleplay" {
@@ -238,6 +243,7 @@ resource "platform-orchestrator_resource_type" "vm-fleet" {
     }
   })
   is_developer_accessible = true
+  depends_on = [ platform-orchestrator_provider.google ]
 }
 resource "platform-orchestrator_module" "vm_fleet_example" {
   id = "vm-fleet-example"

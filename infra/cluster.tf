@@ -8,13 +8,13 @@ provider "kubernetes" {
 
 resource "kubernetes_namespace" "runner" {
   metadata {
-    name = "humanitec-runner"
+    name = "${local.prefix}-humanitec-runner"
   }
 }
 
 resource "kubernetes_service_account" "runner" {
   metadata {
-    name      = "humanitec-runner-sa"
+    name      = "${local.prefix}-humanitec-runner-sa"
     namespace = kubernetes_namespace.runner.metadata[0].name
     annotations = {
       "iam.gke.io/gcp-service-account" = google_service_account.runner.email
@@ -24,7 +24,7 @@ resource "kubernetes_service_account" "runner" {
 
 resource "kubernetes_role" "orchestrator_access" {
   metadata {
-    name      = "humanitec-runner-orchestrator-access"
+    name      = "${local.prefix}-humanitec-runner-orchestrator-access"
     namespace = kubernetes_namespace.runner.metadata[0].name
   }
 
@@ -50,7 +50,7 @@ resource "kubernetes_role" "orchestrator_access" {
 
 resource "kubernetes_role_binding" "orchestrator_access" {
   metadata {
-    name      = "humanitec-runner-orchestrator-access"
+    name      = "${local.prefix}-humanitec-runner-orchestrator-access"
     namespace = kubernetes_namespace.runner.metadata[0].name
   }
 
@@ -74,7 +74,7 @@ resource "kubernetes_role_binding" "orchestrator_access" {
 
 resource "kubernetes_cluster_role_binding" "runner_cluster_admin" {
   metadata {
-    name = "humanitec-runner-cluster-admin"
+    name = "${local.prefix}-humanitec-runner-cluster-admin"
   }
 
   role_ref {

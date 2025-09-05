@@ -17,3 +17,9 @@ variable "humanitec_org" {
 variable "humanitec_auth_token" {
   description = "Humanitec auth token"
 }
+
+variable "prefix" {
+  description = "Prefix for resources to allow multiple instances (4 random chars if empty)"
+  type        = string
+  default     = ""
+}

@@ -22,7 +22,7 @@ resource "kubernetes_secret" "google_service_account" {
 }
 
 resource "platform-orchestrator_kubernetes_gke_runner" "runner" {
-  id          = "first-deployment-gke-runner"
+  id          = "${local.prefix}-first-deployment-gke-runner"
   description = "GKE runner for Humanitec Orchestrator to launch runners in all environments"
 
   runner_configuration = {
@@ -89,12 +89,12 @@ resource "platform-orchestrator_runner_rule" "runner_rule" {
 }
 
 resource "platform-orchestrator_environment_type" "environment_type" {
-  id           = "development"
+  id           = "${local.prefix}-development"
   display_name = "Development Environment"
 }
 
 resource "platform-orchestrator_project" "project" {
-  id         = "tutorial"
+  id         = "${local.prefix}-tutorial"
   depends_on = [platform-orchestrator_runner_rule.runner_rule]
 }
 

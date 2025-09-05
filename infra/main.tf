@@ -20,7 +20,24 @@ terraform {
       source  = "humanitec/platform-orchestrator"
       version = ">= 2.4.0"
     }
+
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 
   required_version = ">= 0.14"
+}
+
+resource "random_string" "prefix" {
+  length  = 4
+  lower   = true
+  upper   = false
+  numeric = false
+  special = false
+}
+
+locals {
+  prefix = var.prefix != "" ? var.prefix : random_string.prefix.result
 }
