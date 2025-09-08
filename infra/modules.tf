@@ -269,6 +269,21 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
       type = platform-orchestrator_resource_type.vm-fleet.id
     }
   }
+  module_params = {
+    metadata = {
+      type        = "map"
+      description = "The metadata component of the Score workload"
+    }
+    containers = {
+      type        = "map"
+      description = "The containers component of the Score workload"
+    }
+    service = {
+      type        = "map"
+      is_optional = true
+      description = "The service component of the Score workload"
+    }
+  }
   module_inputs = jsonencode({
     ips = "$${resources.fleet.outputs.instance_ips}"
     loadbalancer = "$${resources.fleet.outputs.loadbalancer_ip}"
@@ -358,6 +373,21 @@ resource "platform-orchestrator_module" "score-k8s" {
   id = "score-k8s"
   resource_type = platform-orchestrator_resource_type.score-workload.id
   module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/score-workload/kubernetes"
+  module_params = {
+    metadata = {
+      type        = "map"
+      description = "The metadata component of the Score workload"
+    }
+    containers = {
+      type        = "map"
+      description = "The containers component of the Score workload"
+    }
+    service = {
+      type        = "map"
+      is_optional = true
+      description = "The service component of the Score workload"
+    }
+  }
   provider_mapping = {
     kubernetes = "kubernetes.default"
   }
