@@ -1,4 +1,6 @@
 resource "platform-orchestrator_provider" "google" {
+  count = local.create_gcp ? 1 : 0
+
   id                 = "default"
   description        = "Provider using default runner environment variables for Google"
   provider_type      = "google"
@@ -12,7 +14,22 @@ resource "platform-orchestrator_provider" "google" {
   })
 }
 
+resource "platform-orchestrator_provider" "aws" {
+  count = local.create_aws ? 1 : 0
+
+  id                 = "default"
+  description        = "Provider using default runner environment variables for AWS"
+  provider_type      = "aws"
+  source             = "hashicorp/aws"
+  version_constraint = "~> 5.0"
+  configuration = jsonencode({
+    region = var.aws_region
+  })
+}
+
 resource "platform-orchestrator_resource_type" "bucket" {
+  count = local.create_gcp ? 1 : 0
+
   id          = "bucket"
   description = "A bucket in Google Cloud Storage"
   output_schema = jsonencode({
@@ -29,9 +46,11 @@ resource "platform-orchestrator_resource_type" "bucket" {
 }
 
 resource "platform-orchestrator_module" "bucket" {
+  count = local.create_gcp ? 1 : 0
+
   id            = "gcs-bucket"
   description   = "Module for a Google Cloud Storage bucket"
-  resource_type = platform-orchestrator_resource_type.bucket.id
+  resource_type = platform-orchestrator_resource_type.bucket[0].id
   module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/bucket"
   provider_mapping = {
     google = "google.default"
@@ -42,10 +61,14 @@ resource "platform-orchestrator_module" "bucket" {
 }
 
 resource "platform-orchestrator_module_rule" "bucket" {
-  module_id = platform-orchestrator_module.bucket.id
+  count = local.create_gcp ? 1 : 0
+
+  module_id = platform-orchestrator_module.bucket[0].id
 }
 
 resource "platform-orchestrator_resource_type" "queue" {
+  count = local.create_gcp ? 1 : 0
+
   id          = "queue"
   description = "A queue in Google Cloud Pub/Sub"
   output_schema = jsonencode({
@@ -62,9 +85,11 @@ resource "platform-orchestrator_resource_type" "queue" {
 }
 
 resource "platform-orchestrator_module" "queue" {
+  count = local.create_gcp ? 1 : 0
+
   id            = "pub-sub-topic"
   description   = "Module for a Google Cloud Pub/Sub topic"
-  resource_type = platform-orchestrator_resource_type.queue.id
+  resource_type = platform-orchestrator_resource_type.queue[0].id
   module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/pub-sub-topic"
   provider_mapping = {
     google = "google.default"
@@ -76,7 +101,9 @@ resource "platform-orchestrator_module" "queue" {
 }
 
 resource "platform-orchestrator_module_rule" "queue" {
-  module_id = platform-orchestrator_module.queue.id
+  count = local.create_gcp ? 1 : 0
+
+  module_id = platform-orchestrator_module.queue[0].id
 }
 
 resource "platform-orchestrator_provider" "k8s" {
@@ -134,6 +161,8 @@ resource "platform-orchestrator_resource_type" "k8s-service-account" {
 
 # TODO: This module is using a hardcoded GCP service account email, we should create a module and use it here as dependency
 resource "platform-orchestrator_module" "k8s-service-account" {
+  count = local.create_gcp ? 1 : 0
+
   id            = "k8s-service-account"
   description   = "Module for a Kubernetes service account"
   resource_type = platform-orchestrator_resource_type.k8s-service-account.id
@@ -156,7 +185,9 @@ resource "platform-orchestrator_module" "k8s-service-account" {
 }
 
 resource "platform-orchestrator_module_rule" "k8s-service-account" {
-  module_id = platform-orchestrator_module.k8s-service-account.id
+  count = local.create_gcp ? 1 : 0
+
+  module_id = platform-orchestrator_module.k8s-service-account[0].id
 }
 
 resource "platform-orchestrator_resource_type" "in-cluster-postgres" {
@@ -220,6 +251,8 @@ resource "platform-orchestrator_provider" "ansibleplay" {
 }
 
 resource "platform-orchestrator_resource_type" "vm-fleet" {
+  count = local.create_gcp ? 1 : 0
+
   id          = "vm-fleet"
   description = "A fleet of virtual machines"
   output_schema = jsonencode({
@@ -246,8 +279,10 @@ resource "platform-orchestrator_resource_type" "vm-fleet" {
   depends_on = [ platform-orchestrator_provider.google ]
 }
 resource "platform-orchestrator_module" "vm_fleet_example" {
+  count = local.create_gcp ? 1 : 0
+
   id = "vm-fleet-example"
-  resource_type = platform-orchestrator_resource_type.vm-fleet.id
+  resource_type = platform-orchestrator_resource_type.vm-fleet[0].id
   provider_mapping = {
     google = "google.default"
   }
@@ -255,10 +290,14 @@ resource "platform-orchestrator_module" "vm_fleet_example" {
 }
 
 resource "platform-orchestrator_module_rule" "vm_fleet_example" {
-  module_id = platform-orchestrator_module.vm_fleet_example.id
+  count = local.create_gcp ? 1 : 0
+
+  module_id = platform-orchestrator_module.vm_fleet_example[0].id
 }
 
 resource "platform-orchestrator_module" "ansible_score_workload" {
+  count = local.create_gcp ? 1 : 0
+
   id = "ansible-score-workload"
   resource_type = platform-orchestrator_resource_type.score-workload.id
   provider_mapping = {
@@ -266,7 +305,7 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
   }
   dependencies = {
     fleet = {
-      type = platform-orchestrator_resource_type.vm-fleet.id
+      type = platform-orchestrator_resource_type.vm-fleet[0].id
     }
   }
   module_params = {
@@ -294,7 +333,9 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
 }
 
 resource "platform-orchestrator_module_rule" "ansible_score_workload" {
-  module_id = platform-orchestrator_module.ansible_score_workload.id
+  count = local.create_gcp ? 1 : 0
+
+  module_id = platform-orchestrator_module.ansible_score_workload[0].id
   env_id = platform-orchestrator_environment.score_environment.id
   project_id = platform-orchestrator_project.project.id
 }
