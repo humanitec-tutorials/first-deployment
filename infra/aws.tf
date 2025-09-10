@@ -220,7 +220,7 @@ resource "aws_iam_role" "humanitec_runner" {
         }
         Condition = {
           StringEquals = {
-            "${replace(aws_iam_openid_connect_provider.eks[0].url, "https://", "")}:sub" = "${var.humanitec_org}+${local.prefix}-first-deployment-eks-runner"
+            "${replace(aws_iam_openid_connect_provider.eks[0].url, "https://", "")}:sub" = "${var.humanitec_org}+${local.prefix}-first-deployment-eks-agent-runner"
           }
         }
       }
@@ -253,3 +253,5 @@ resource "aws_iam_role_policy" "humanitec_runner" {
     ]
   })
 }
+
+# EBS CSI resources removed - using local storage for demo purposes

@@ -5,13 +5,13 @@ provider "platform-orchestrator" {
 }
 
 resource "google_service_account_key" "runner_key" {
-  count = local.create_gcp ? 1 : 0
+  count              = local.create_gcp ? 1 : 0
   service_account_id = google_service_account.runner[0].name
 }
 
 resource "kubernetes_secret" "google_service_account" {
   count = local.create_gcp ? 1 : 0
-  
+
   metadata {
     name      = "google-service-account"
     namespace = kubernetes_namespace.runner.metadata[0].name
@@ -90,48 +90,20 @@ resource "platform-orchestrator_kubernetes_gke_runner" "gke_runner" {
   }
 }
 
-# TLS resources for EKS runner client certificate authentication
-resource "tls_private_key" "runner_key" {
-  count     = local.create_aws ? 1 : 0
-  algorithm = "RSA"
-  rsa_bits  = 2048
-}
+# RSA key no longer needed for agent runner approach
+# resource "tls_private_key" "runner_key" {
+#   count     = local.create_aws ? 1 : 0
+#   algorithm = "RSA"
+#   rsa_bits  = 2048
+# }
 
-# Generate Ed25519 keypair for kubernetes-agent-runner
+# Generate ED25519 keypair for kubernetes-agent-runner
 resource "tls_private_key" "agent_runner_key" {
   count     = local.create_aws ? 1 : 0
-  algorithm = "Ed25519"
+  algorithm = "ED25519"
 }
 
-resource "tls_cert_request" "runner_csr" {
-  count           = local.create_aws ? 1 : 0
-  private_key_pem = tls_private_key.runner_key[0].private_key_pem
-
-  subject {
-    common_name  = "humanitec-runner"
-    organization = "system:masters"
-  }
-}
-
-# Self-signed certificate for demonstration purposes
-resource "tls_self_signed_cert" "runner_cert" {
-  count             = local.create_aws ? 1 : 0
-  private_key_pem   = tls_private_key.runner_key[0].private_key_pem
-  is_ca_certificate = false
-
-  subject {
-    common_name  = "humanitec-runner"
-    organization = "system:masters"
-  }
-
-  validity_period_hours = 8760 # 1 year
-
-  allowed_uses = [
-    "digital_signature",
-    "key_encipherment",
-    "client_auth",
-  ]
-}
+# TLS certificate resources are no longer needed for agent runner
 
 # Alternative: Use AWS IAM Authenticator for more robust authentication
 # This requires creating an aws-auth ConfigMap in the cluster
@@ -164,49 +136,37 @@ resource "kubernetes_config_map" "aws_auth" {
   }
 }
 
-# EKS Runner using generic Kubernetes runner
-resource "platform-orchestrator_kubernetes_runner" "eks_runner" {
+# EKS Agent Runner using kubernetes-agent-runner
+resource "platform-orchestrator_kubernetes_agent_runner" "eks_agent_runner" {
   count = local.create_aws ? 1 : 0
 
-  id          = "${local.prefix}-first-deployment-eks-runner"
-  description = "EKS runner for Humanitec Orchestrator to launch runners in all environments"
-
+  id = "${local.prefix}-first-deployment-eks-agent-runner"
   runner_configuration = {
-    cluster = {
-      cluster_data = {
-        server                     = aws_eks_cluster.cluster[0].endpoint
-        certificate_authority_data = aws_eks_cluster.cluster[0].certificate_authority[0].data
-      }
-      auth = {
-        client_certificate_data = base64encode(tls_self_signed_cert.runner_cert[0].cert_pem)
-        client_key_data        = base64encode(tls_private_key.runner_key[0].private_key_pem)
-      }
-    }
+    key = tls_private_key.agent_runner_key[0].public_key_pem
     job = {
       namespace       = kubernetes_namespace.runner.metadata[0].name
-      service_account = kubernetes_service_account.runner.metadata[0].name
+      service_account = "${kubernetes_service_account.runner.metadata[0].name}-inner"
       pod_template = jsonencode({
-        metadata = {
-          labels = {
-            "app.kubernetes.io/name" = "humanitec-runner"
-          }
-        }
         spec = {
-          containers = [
-            {
-              name = "canyon-runner"
-              securityContext = {
-                runAsNonRoot = false,
-                runAsUser    = 0,
-                runAsGroup   = 0
-              }
+          containers = [{
+            name = "canyon-runner"
+            env  = []
+            volumeMounts = [{
+              name      = "aws-creds"
+              mountPath = "/mnt/aws-creds"
+              readOnly  = true
+            }]
+          }]
+          volumes = [{
+            name = "aws-creds"
+            secret = {
+              secretName = "${local.prefix}-canyon-runner-aws-creds"
             }
-          ]
+          }]
         }
       })
     }
   }
-
   state_storage_configuration = {
     type = "kubernetes"
     kubernetes_configuration = {
@@ -216,13 +176,13 @@ resource "platform-orchestrator_kubernetes_runner" "eks_runner" {
 }
 
 resource "platform-orchestrator_runner_rule" "gke_runner_rule" {
-  count = local.create_gcp ? 1 : 0
+  count     = local.create_gcp ? 1 : 0
   runner_id = platform-orchestrator_kubernetes_gke_runner.gke_runner[0].id
 }
 
-resource "platform-orchestrator_runner_rule" "eks_runner_rule" {
-  count = local.create_aws ? 1 : 0
-  runner_id = platform-orchestrator_kubernetes_runner.eks_runner[0].id
+resource "platform-orchestrator_runner_rule" "eks_agent_runner_rule" {
+  count     = local.create_aws ? 1 : 0
+  runner_id = platform-orchestrator_kubernetes_agent_runner.eks_agent_runner[0].id
 }
 
 resource "platform-orchestrator_environment_type" "environment_type" {
@@ -231,21 +191,21 @@ resource "platform-orchestrator_environment_type" "environment_type" {
 }
 
 resource "platform-orchestrator_project" "project" {
-  id         = "${local.prefix}-tutorial"
+  id = "${local.prefix}-tutorial"
   depends_on = [
     platform-orchestrator_runner_rule.gke_runner_rule,
-    platform-orchestrator_runner_rule.eks_runner_rule
+    platform-orchestrator_runner_rule.eks_agent_runner_rule
   ]
 }
 
 resource "platform-orchestrator_environment" "dev_environment" {
-  id               = "dev"
-  project_id       = platform-orchestrator_project.project.id
+  id          = "dev"
+  project_id  = platform-orchestrator_project.project.id
   env_type_id = platform-orchestrator_environment_type.environment_type.id
 }
 
 resource "platform-orchestrator_environment" "score_environment" {
-  id               = "score"
-  project_id       = platform-orchestrator_project.project.id
+  id          = "score"
+  project_id  = platform-orchestrator_project.project.id
   env_type_id = platform-orchestrator_environment_type.environment_type.id
 }
