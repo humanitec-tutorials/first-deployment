@@ -4,25 +4,31 @@ provider "google" {
 }
 
 resource "google_compute_network" "vpc" {
+  count = local.create_gcp ? 1 : 0
+
   name                    = "${local.prefix}-first-deployment-vpc"
   auto_create_subnetworks = "false"
 }
 
 resource "google_compute_subnetwork" "subnet" {
+  count = local.create_gcp ? 1 : 0
+
   name          = "${local.prefix}-first-deployment-subnet"
   region        = var.gcp_region
-  network       = google_compute_network.vpc.name
+  network       = google_compute_network.vpc[0].name
   ip_cidr_range = "10.10.0.0/24"
 }
 
 resource "google_container_cluster" "cluster" {
+  count = local.create_gcp ? 1 : 0
+
   name     = "${local.prefix}-first-deployment-gke"
   location = var.gcp_region
 
   initial_node_count = 2
 
-  network    = google_compute_network.vpc.name
-  subnetwork = google_compute_subnetwork.subnet.name
+  network    = google_compute_network.vpc[0].name
+  subnetwork = google_compute_subnetwork.subnet[0].name
 
   # Enable Workload Identity
   workload_identity_config {
@@ -32,11 +38,15 @@ resource "google_container_cluster" "cluster" {
 
 
 resource "google_iam_workload_identity_pool" "wip" {
+  count = local.create_gcp ? 1 : 0
+
   workload_identity_pool_id = "${local.prefix}-first-deployment-wip"
 }
 
 resource "google_iam_workload_identity_pool_provider" "wip_provider" {
-  workload_identity_pool_id          = google_iam_workload_identity_pool.wip.workload_identity_pool_id
+  count = local.create_gcp ? 1 : 0
+
+  workload_identity_pool_id          = google_iam_workload_identity_pool.wip[0].workload_identity_pool_id
   workload_identity_pool_provider_id = "${local.prefix}-first-deploy-wip-provider"
   attribute_mapping = {
     "google.subject" = "assertion.sub"
@@ -47,6 +57,8 @@ resource "google_iam_workload_identity_pool_provider" "wip_provider" {
 }
 
 resource "google_service_account" "runner" {
+  count = local.create_gcp ? 1 : 0
+
   account_id   = "${local.prefix}-first-deployment-runner"
   display_name = "Used by Humanitec Orchestrator to access GKE clusters for launching runners"
 }
@@ -56,12 +68,16 @@ data "google_project" "project" {
 }
 
 resource "google_service_account_iam_member" "runner_workload_identity_binding" {
-  service_account_id = google_service_account.runner.name
+  count = local.create_gcp ? 1 : 0
+
+  service_account_id = google_service_account.runner[0].name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principal://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.wip.workload_identity_pool_id}/subject/${var.humanitec_org}+${local.prefix}-first-deployment-gke-runner"
+  member             = "principal://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.wip[0].workload_identity_pool_id}/subject/${var.humanitec_org}+${local.prefix}-first-deployment-gke-runner"
 }
 
 resource "google_project_iam_custom_role" "runner" {
+  count = local.create_gcp ? 1 : 0
+
   role_id     = "${local.prefix}_first_deployment_runner_role"
   title       = "${local.prefix}_first_deployment_runner_role"
   description = "Access for the Humanitec Orchestrator to GKE clusters for launching runners"
@@ -250,7 +266,9 @@ resource "google_project_iam_custom_role" "runner" {
 }
 
 resource "google_project_iam_member" "runner_role_binding" {
+  count = local.create_gcp ? 1 : 0
+
   project = var.gcp_project_id
-  role    = "projects/${var.gcp_project_id}/roles/${google_project_iam_custom_role.runner.role_id}"
-  member  = "serviceAccount:${google_service_account.runner.email}"
+  role    = "projects/${var.gcp_project_id}/roles/${google_project_iam_custom_role.runner[0].role_id}"
+  member  = "serviceAccount:${google_service_account.runner[0].email}"
 }

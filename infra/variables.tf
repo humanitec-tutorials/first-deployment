@@ -23,3 +23,20 @@ variable "prefix" {
   type        = string
   default     = ""
 }
+
+variable "enabled_cloud_providers" {
+  description = "List of cloud providers to enable (valid values: 'gcp', 'aws')"
+  type        = list(string)
+  default     = ["gcp"]
+
+  validation {
+    condition     = length([for provider in var.enabled_cloud_providers : provider if contains(["gcp", "aws"], provider)]) == length(var.enabled_cloud_providers)
+    error_message = "Valid values for enabled_cloud_providers are 'gcp' and 'aws'."
+  }
+}
+
+# AWS Variables
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+}
