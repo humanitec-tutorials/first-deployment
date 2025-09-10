@@ -25,40 +25,22 @@ destroy_cloud_resources() {
 
 echo "Step 1: Destroying environments (and their workloads) using Humanitec CLI..."
 
-# Function to extract values from terraform state using JSON output
+# Function to extract values from terraform state using text parsing
 get_tf_state_value() {
     local resource="$1"
-    local path="$2"
-    terraform state show -json "$resource" 2>/dev/null | jq -r "$path" 2>/dev/null
+    local attribute="$2"
+    terraform state show "$resource" 2>/dev/null | grep "^[[:space:]]*${attribute}[[:space:]]*=" | head -1 | awk -F'=' '{print $2}' | tr -d ' "' 
 }
 
 # Getting project ID from Terraform state
 echo "Extracting project information from Terraform state..."
 
-# Get project ID - try multiple approaches
+# Get project ID using simple text parsing
 echo "Attempting to extract project ID..."
 
-# Method 1: JSON path .values.id
-PROJECT_ID=$(get_tf_state_value "platform-orchestrator_project.project" ".values.id")
-echo "Method 1 (.values.id): '$PROJECT_ID'"
-
-# Method 2: JSON path .instances[0].attributes.id
-if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
-    PROJECT_ID=$(get_tf_state_value "platform-orchestrator_project.project" ".instances[0].attributes.id")
-    echo "Method 2 (.instances[0].attributes.id): '$PROJECT_ID'"
-fi
-
-# Method 3: Simple text parsing of terraform state show
-if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
-    PROJECT_ID=$(terraform state show platform-orchestrator_project.project 2>/dev/null | grep "id.*=" | head -1 | awk '{print $3}' | tr -d '"')
-    echo "Method 3 (text parsing): '$PROJECT_ID'"
-fi
-
-# Method 4: Direct terraform output if available
-if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
-    PROJECT_ID=$(terraform output -raw project_id 2>/dev/null)
-    echo "Method 4 (terraform output): '$PROJECT_ID'"
-fi
+# Method 1: Use the updated text parsing function
+PROJECT_ID=$(get_tf_state_value "platform-orchestrator_project.project" "id")
+echo "Method 1 (text parsing 'id'): '$PROJECT_ID'"
 
 echo "Detected Project ID: $PROJECT_ID"
 
@@ -83,7 +65,7 @@ if [ ! -z "$PROJECT_ID" ]; then
         
         # Wait for cleanup to propagate
         echo "Waiting for environment cleanup to complete..."
-        sleep 15
+        sleep 10
     fi
 else
     echo "Warning: Could not determine project ID"

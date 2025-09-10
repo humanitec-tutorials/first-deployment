@@ -1,0 +1,73 @@
+# Terraform Variables Template for Humanitec Tutorial
+# Copy this file to terraform.tfvars and fill in your values
+
+# =============================================================================
+# REQUIRED: Humanitec Configuration
+# =============================================================================
+
+# Your Humanitec organization ID
+humanitec_org = "your-org-id"
+
+# Your Humanitec API token (get from: https://console.humanitec.dev/orgs/[yourOrgHere]/service-users)
+humanitec_auth_token = "your-api-token-here"
+
+# =============================================================================
+# CLOUD PROVIDER CONFIGURATION
+# =============================================================================
+
+# Which cloud providers to enable (choose one or both)
+# Options: ["aws"], ["gcp"], or ["aws", "gcp"]
+enabled_cloud_providers = ["aws"]
+
+# =============================================================================
+# AWS Configuration (if using AWS)
+# =============================================================================
+
+# AWS region for resources
+aws_region = "eu-north-1"
+
+# Your AWS profile name (optional - uses default if not specified)
+# aws_profile = "default"
+
+# =============================================================================
+# GCP Configuration (if using GCP)
+# =============================================================================
+
+# GCP project ID
+gcp_project_id = "your-gcp-project-id"
+
+# GCP region for resources
+gcp_region = "europe-west3"
+
+# GCP zone for resources
+gcp_zone = "europe-west3-a"
+
+# =============================================================================
+# OPTIONAL: Resource Naming
+# =============================================================================
+
+# Prefix for resource names (auto-generated if not specified)
+# This helps identify resources and avoid naming conflicts
+# prefix = "tutorial"
+
+# =============================================================================
+# SETUP INSTRUCTIONS
+# =============================================================================
+
+# 1. Copy this file to terraform.tfvars:
+#    cp terraform.tfvars.template terraform.tfvars
+#
+# 2. Edit terraform.tfvars with your actual values
+#
+# 3. Ensure you have the required cloud provider credentials:
+#    - AWS: Configure AWS CLI or set environment variables
+#    - GCP: Set GOOGLE_APPLICATION_CREDENTIALS or use gcloud auth
+#
+# 4. Get your Humanitec API token:
+#    - Go to https://console.humanitec.dev/orgs/[yourOrgHere]/service-users
+#    - Create a new token with appropriate permissions
+#
+# 5. Initialize and apply:
+#    terraform init
+#    terraform plan
+#    terraform apply
