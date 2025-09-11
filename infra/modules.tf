@@ -18,12 +18,13 @@ resource "platform-orchestrator_provider" "aws" {
   count = local.create_aws ? 1 : 0
 
   id                 = "default"
-  description        = "Provider using default runner environment variables for AWS"
+  description        = "Provider using mounted credentials for AWS"
   provider_type      = "aws"
   source             = "hashicorp/aws"
   version_constraint = "~> 5.0"
   configuration = jsonencode({
-    region = var.aws_region
+    region                   = var.aws_region
+    shared_credentials_files = ["/mnt/aws-creds/credentials"]
   })
 }
 
@@ -307,7 +308,7 @@ resource "platform-orchestrator_module" "vm_fleet_aws" {
   provider_mapping = {
     aws = "aws.default"
   }
-  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/vm-fleet/aws?awsVMs"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/vm-fleet/aws"
 }
 
 resource "platform-orchestrator_module_rule" "vm_fleet_aws" {

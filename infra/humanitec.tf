@@ -155,7 +155,12 @@ resource "platform-orchestrator_kubernetes_agent_runner" "eks_agent_runner" {
               name      = "aws-creds"
               mountPath = "/mnt/aws-creds"
               readOnly  = true
-            }]
+            }],
+            securityContext = {
+              runAsNonRoot = false,
+              runAsUser    = 0,
+              runAsGroup   = 0
+            }
           }]
           volumes = [{
             name = "aws-creds"

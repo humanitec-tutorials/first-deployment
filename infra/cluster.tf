@@ -383,7 +383,54 @@ resource "kubernetes_secret" "agent_runner_key" {
   }
 }
 
-# Secret for AWS credentials (placeholder - you'll need to populate this)
+# Create IAM user for Humanitec runner (similar to GCP service account)
+resource "aws_iam_user" "runner_user" {
+  count = local.create_aws ? 1 : 0
+  name  = "${local.prefix}-humanitec-runner"
+  path  = "/humanitec/"
+}
+
+# Create access key for the runner user
+resource "aws_iam_access_key" "runner_key" {
+  count = local.create_aws ? 1 : 0
+  user  = aws_iam_user.runner_user[0].name
+}
+
+# Create a standalone policy with the same permissions as the role policy
+resource "aws_iam_policy" "humanitec_runner_user" {
+  count = local.create_aws ? 1 : 0
+  name  = "${local.prefix}-humanitec-runner-user-policy"
+  path  = "/humanitec/"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:*",
+          "eks:*",
+          "ec2:*",
+          "elasticloadbalancing:*",
+          "iam:*",
+          "s3:*",
+          "sqs:*",
+          "sns:*"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Attach the policy to the IAM user
+resource "aws_iam_user_policy_attachment" "runner_policy" {
+  count      = local.create_aws ? 1 : 0
+  user       = aws_iam_user.runner_user[0].name
+  policy_arn = aws_iam_policy.humanitec_runner_user[0].arn
+}
+
+# Secret for AWS credentials with actual access key credentials
 resource "kubernetes_secret" "aws_creds" {
   count = local.create_aws ? 1 : 0
   
@@ -395,8 +442,11 @@ resource "kubernetes_secret" "aws_creds" {
   type = "Opaque"
 
   data = {
-    # These would typically be populated from AWS IAM role or other secure method
-    "credentials" = ""
+    "credentials" = templatefile("${path.module}/aws-credentials.tpl", {
+      aws_access_key_id     = aws_iam_access_key.runner_key[0].id
+      aws_secret_access_key = aws_iam_access_key.runner_key[0].secret
+      region                = var.aws_region
+    })
   }
 }
 
