@@ -18,12 +18,13 @@ resource "platform-orchestrator_provider" "aws" {
   count = local.create_aws ? 1 : 0
 
   id                 = "default"
-  description        = "Provider using default runner environment variables for AWS"
+  description        = "Provider using mounted credentials for AWS"
   provider_type      = "aws"
   source             = "hashicorp/aws"
   version_constraint = "~> 5.0"
   configuration = jsonencode({
-    region = var.aws_region
+    region                   = var.aws_region
+    shared_credentials_files = ["/mnt/aws-creds/credentials"]
   })
 }
 
@@ -251,7 +252,7 @@ resource "platform-orchestrator_provider" "ansibleplay" {
 }
 
 resource "platform-orchestrator_resource_type" "vm-fleet" {
-  count = local.create_gcp ? 1 : 0
+  count = local.create_gcp || local.create_aws ? 1 : 0
 
   id          = "vm-fleet"
   description = "A fleet of virtual machines"
@@ -276,7 +277,10 @@ resource "platform-orchestrator_resource_type" "vm-fleet" {
     }
   })
   is_developer_accessible = true
-  depends_on = [ platform-orchestrator_provider.google ]
+  depends_on = [ 
+    platform-orchestrator_provider.google,
+    platform-orchestrator_provider.aws
+  ]
 }
 resource "platform-orchestrator_module" "vm_fleet_example" {
   count = local.create_gcp ? 1 : 0
@@ -295,8 +299,26 @@ resource "platform-orchestrator_module_rule" "vm_fleet_example" {
   module_id = platform-orchestrator_module.vm_fleet_example[0].id
 }
 
+# AWS VM Fleet Module
+resource "platform-orchestrator_module" "vm_fleet_aws" {
+  count = local.create_aws ? 1 : 0
+
+  id = "vm-fleet-aws"
+  resource_type = platform-orchestrator_resource_type.vm-fleet[0].id
+  provider_mapping = {
+    aws = "aws.default"
+  }
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/vm-fleet/aws"
+}
+
+resource "platform-orchestrator_module_rule" "vm_fleet_aws" {
+  count = local.create_aws ? 1 : 0
+
+  module_id = platform-orchestrator_module.vm_fleet_aws[0].id
+}
+
 resource "platform-orchestrator_module" "ansible_score_workload" {
-  count = local.create_gcp ? 1 : 0
+  count = local.create_gcp || local.create_aws ? 1 : 0
 
   id = "ansible-score-workload"
   resource_type = platform-orchestrator_resource_type.score-workload.id
@@ -333,7 +355,7 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
 }
 
 resource "platform-orchestrator_module_rule" "ansible_score_workload" {
-  count = local.create_gcp ? 1 : 0
+  count = local.create_gcp || local.create_aws ? 1 : 0
 
   module_id = platform-orchestrator_module.ansible_score_workload[0].id
   env_id = platform-orchestrator_environment.score_environment.id

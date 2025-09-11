@@ -240,6 +240,7 @@ resource "aws_iam_role_policy" "humanitec_runner" {
       {
         Effect = "Allow"
         Action = [
+          "autoscaling:*",
           "eks:*",
           "ec2:*",
           "elasticloadbalancing:*",
