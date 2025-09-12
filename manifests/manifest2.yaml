@@ -6,6 +6,8 @@ workloads:
           containers:
             main:
               image: ghcr.io/astromechza/demo-app:latest
+              variables:
+                OVERRIDE_POSTGRES: postgres://${resources.db.outputs.username}:${resources.db.outputs.password}@${resources.db.outputs.hostname}:${resources.db.outputs.port}/${resources.db.outputs.database}
           metadata:
             name: demo-app
           service:
@@ -16,5 +18,3 @@ workloads:
         type: score-workload
       db:
         type: postgres
-    variables:
-      OVERRIDE_POSTGRES: postgres://${resources.db.outputs.username}:${resources.db.outputs.password}@${resources.db.outputs.hostname}:${resources.db.outputs.port}/${resources.db.outputs.database}

@@ -387,7 +387,10 @@ resource "random_id" "release" {
 
 resource "random_password" "pwd" {
   length = 16
-  special = true
+  special = false
+  lower = true
+  upper = true
+  number = true
 }
 
 resource "helm_release" "db" {
