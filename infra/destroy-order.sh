@@ -1,7 +1,112 @@
 #!/bin/bash
 set -e
 
+# =============================================================================
+# SAFE DESTRUCTION SCRIPT FOR HUMANITEC TUTORIAL INFRASTRUCTURE
+# =============================================================================
+# 
+# This script safely destroys the Humanitec tutorial infrastructure with:
+# - kubectl context verification to prevent wrong cluster destruction
+# - Production environment detection and extra warnings  
+# - Explicit user confirmation requiring typed confirmation
+# - Proper resource destruction ordering to prevent hanging resources
+# 
+# SAFETY FEATURES:
+# - Verifies kubectl context and displays current cluster information
+# - Requires typing "destroy-my-infrastructure" for confirmation
+# - Shows 5-second countdown with Ctrl+C escape option
+# - Detects potential production contexts and shows extra warnings
+# 
+# =============================================================================
+
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
 echo "=== Destroying Humanitec Tutorial Infrastructure with Proper Ordering ==="
+
+# Safety check function - verify kubectl context and get user confirmation
+safety_check() {
+    echo -e "${RED}⚠️  DANGER: This script will destroy infrastructure and Kubernetes resources!${NC}"
+    echo ""
+    
+    # Check if kubectl is available
+    if ! command -v kubectl &> /dev/null; then
+        echo -e "${RED}Error: kubectl is not installed or not in PATH${NC}"
+        echo "This script requires kubectl to safely verify the target cluster context."
+        exit 1
+    fi
+    
+    # Get current kubectl context
+    CURRENT_CONTEXT=$(kubectl config current-context 2>/dev/null || echo "NONE")
+    
+    if [ "$CURRENT_CONTEXT" = "NONE" ]; then
+        echo -e "${RED}Error: No kubectl context is currently set${NC}"
+        echo "Please set your kubectl context before running this script:"
+        echo "  kubectl config use-context <your-context>"
+        exit 1
+    fi
+    
+    # Get cluster info
+    echo -e "${YELLOW}Current kubectl configuration:${NC}"
+    echo "  Context: $CURRENT_CONTEXT"
+    
+    # Try to get cluster info
+    CLUSTER_INFO=$(kubectl config get-contexts "$CURRENT_CONTEXT" --no-headers 2>/dev/null | awk '{print $3}' || echo "Unknown")
+    echo "  Cluster: $CLUSTER_INFO"
+    
+    # Get server URL for additional safety
+    SERVER_URL=$(kubectl config view -o jsonpath="{.clusters[?(@.name=='$CLUSTER_INFO')].cluster.server}" 2>/dev/null || echo "Unknown")
+    echo "  Server: $SERVER_URL"
+    
+    # Show what will be affected
+    echo ""
+    echo -e "${RED}This script will:${NC}"
+    echo "  1. Delete ALL applications/workloads in the current cluster context"
+    echo "  2. Delete ALL PVCs, StatefulSets, and Deployments across ALL namespaces"
+    echo "  3. Delete ALL Kubernetes resources (secrets, configmaps, service accounts, etc.)"
+    echo "  4. Destroy the entire cloud infrastructure (EKS/GKE clusters, VMs, networking)"
+    echo "  5. Delete Humanitec environments and projects"
+    echo ""
+    
+    # Check if this looks like a production context (basic heuristics)
+    if [[ "$CURRENT_CONTEXT" == *"prod"* ]] || [[ "$CURRENT_CONTEXT" == *"production"* ]] || [[ "$SERVER_URL" == *"prod"* ]]; then
+        echo -e "${RED}🚨 WARNING: Your current context appears to be a PRODUCTION environment!${NC}"
+        echo -e "${RED}Context: $CURRENT_CONTEXT${NC}"
+        echo ""
+    fi
+    
+    # Final confirmation with explicit typing required
+    echo -e "${YELLOW}To proceed with destroying the infrastructure in context '${CURRENT_CONTEXT}':${NC}"
+    echo "1. Type exactly: destroy-my-infrastructure"
+    echo "2. Press Enter"
+    echo ""
+    echo -e "${RED}Type anything else to cancel.${NC}"
+    echo ""
+    
+    read -p "Confirmation: " user_input
+    
+    if [ "$user_input" != "destroy-my-infrastructure" ]; then
+        echo -e "${GREEN}Destruction cancelled. No resources were harmed.${NC}"
+        exit 0
+    fi
+    
+    echo ""
+    echo -e "${YELLOW}Final confirmation: Destroying infrastructure in 5 seconds...${NC}"
+    echo -e "${YELLOW}Press Ctrl+C now to cancel!${NC}"
+    for i in {5..1}; do
+        echo -e "${YELLOW}$i...${NC}"
+        sleep 1
+    done
+    
+    echo -e "${RED}🚀 Starting destruction...${NC}"
+    echo ""
+}
+
+# Run safety check first
+safety_check
 
 # Function to run terraform destroy with specific targets (handles resource indices)
 destroy_target() {
