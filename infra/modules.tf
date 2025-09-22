@@ -403,6 +403,8 @@ resource "helm_release" "db" {
     { name = "auth.database", value = "default"},
     { name = "auth.username", value = "db-user" },
     { name = "auth.password", value = random_password.pwd.result },
+    { name = "primary.persistence.enabled", value = "false" },
+    { name = "readReplicas.persistence.enabled", value = "false" }
   ]
   wait = true
 }

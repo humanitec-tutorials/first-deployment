@@ -44,7 +44,7 @@ resource "platform-orchestrator_kubernetes_gke_runner" "gke_runner" {
     }
     job = {
       namespace       = kubernetes_namespace.runner.metadata[0].name
-      service_account = kubernetes_service_account.runner.metadata[0].name
+      service_account = kubernetes_service_account.runner[0].metadata[0].name
       pod_template = jsonencode({
         metadata = {
           labels = {
@@ -145,7 +145,7 @@ resource "platform-orchestrator_kubernetes_agent_runner" "eks_agent_runner" {
     key = tls_private_key.agent_runner_key[0].public_key_pem
     job = {
       namespace       = kubernetes_namespace.runner.metadata[0].name
-      service_account = "${kubernetes_service_account.runner.metadata[0].name}-inner"
+      service_account = "${local.prefix}-humanitec-runner-sa-inner"
       pod_template = jsonencode({
         spec = {
           containers = [{
@@ -213,4 +213,40 @@ resource "platform-orchestrator_environment" "score_environment" {
   id          = "score"
   project_id  = platform-orchestrator_project.project.id
   env_type_id = platform-orchestrator_environment_type.environment_type.id
+}
+
+# Lifecycle management for proper destroy ordering
+# This ensures environments are destroyed before their dependencies (runners, projects, etc.)
+resource "null_resource" "environment_lifecycle" {
+  triggers = {
+    # Track environment IDs to detect changes
+    dev_environment   = platform-orchestrator_environment.dev_environment.id
+    score_environment = platform-orchestrator_environment.score_environment.id
+    project_id        = platform-orchestrator_project.project.id
+    env_type_id       = platform-orchestrator_environment_type.environment_type.id
+  }
+
+  # Make this resource depend on all the infrastructure that environments use
+  # During destroy, Terraform will destroy this resource first, then environments,
+  # then finally the infrastructure resources
+  depends_on = [
+    # Runners that environments depend on
+    platform-orchestrator_kubernetes_agent_runner.eks_agent_runner,
+    platform-orchestrator_kubernetes_gke_runner.gke_runner,
+    platform-orchestrator_runner_rule.eks_agent_runner_rule,
+    platform-orchestrator_runner_rule.gke_runner_rule,
+
+    # Project and environment type
+    platform-orchestrator_project.project,
+    platform-orchestrator_environment_type.environment_type,
+
+    # Module rules that environments use
+    platform-orchestrator_module_rule.ansible_score_workload,
+
+    # Underlying infrastructure
+    helm_release.humanitec_runner,
+    kubernetes_cluster_role_binding.runner_inner_cluster_admin,
+    aws_iam_role.humanitec_runner,
+    google_service_account.runner
+  ]
 }
