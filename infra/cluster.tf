@@ -49,113 +49,17 @@ resource "kubernetes_namespace" "runner" {
   }
 }
 
-# ServiceAccount for GCP only - AWS service account is managed by Helm chart
-resource "kubernetes_service_account" "runner" {
-  count = local.create_gcp ? 1 : 0
-  metadata {
-    name      = "${local.prefix}-humanitec-runner-sa"
-    namespace = kubernetes_namespace.runner.metadata[0].name
-    annotations = {
-      "iam.gke.io/gcp-service-account" = google_service_account.runner[0].email
-    }
-  }
-}
+# ServiceAccount is now managed by Helm chart for both GCP and AWS
+# The Helm chart will create the service account with proper annotations
 
-# Patch the Helm-managed service account with IRSA annotation for AWS
-resource "kubernetes_annotations" "runner_irsa" {
-  count = local.create_aws ? 1 : 0
+# GCP authentication uses service account keys (stored in kubernetes_secret.google_service_account)
+# No workload identity annotations needed since we removed workload identity from the cluster
 
-  api_version = "v1"
-  kind        = "ServiceAccount"
+# RBAC is now managed by Helm chart for both GCP and AWS
+# The Helm chart will create appropriate RBAC resources
 
-  metadata {
-    name      = "${local.prefix}-humanitec-runner-sa"
-    namespace = kubernetes_namespace.runner.metadata[0].name
-  }
-
-  annotations = {
-    "eks.amazonaws.com/role-arn" = aws_iam_role.humanitec_runner[0].arn
-  }
-
-  depends_on = [helm_release.humanitec_runner]
-}
-
-# RBAC for GCP only - AWS uses Helm chart managed RBAC
-resource "kubernetes_role" "orchestrator_access" {
-  count = local.create_gcp ? 1 : 0
-  metadata {
-    name      = "${local.prefix}-humanitec-runner-orchestrator-access"
-    namespace = kubernetes_namespace.runner.metadata[0].name
-  }
-
-  rule {
-    api_groups = ["batch"]
-    resources  = ["jobs"]
-    verbs      = ["create", "get"]
-  }
-
-  rule {
-    api_groups = [""]
-    resources  = ["secrets", "configmaps"]
-    verbs      = ["get", "list", "watch", "create", "update", "delete"]
-  }
-
-  rule {
-    api_groups = ["coordination.k8s.io"]
-    resources  = ["leases"]
-    verbs      = ["get", "list", "watch", "create", "update", "delete"]
-  }
-
-}
-
-resource "kubernetes_role_binding" "orchestrator_access" {
-  count = local.create_gcp ? 1 : 0
-  metadata {
-    name      = "${local.prefix}-humanitec-runner-orchestrator-access"
-    namespace = kubernetes_namespace.runner.metadata[0].name
-  }
-
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "Role"
-    name      = kubernetes_role.orchestrator_access[0].metadata[0].name
-  }
-
-  subject {
-    kind = "User"
-    name = google_service_account.runner[0].email
-  }
-
-  subject {
-    kind      = "ServiceAccount"
-    name      = kubernetes_service_account.runner[0].metadata[0].name
-    namespace = kubernetes_namespace.runner.metadata[0].name
-  }
-}
-
-resource "kubernetes_cluster_role_binding" "runner_cluster_admin" {
-  count = local.create_gcp ? 1 : 0
-  metadata {
-    name = "${local.prefix}-humanitec-runner-cluster-admin"
-  }
-
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "ClusterRole"
-    name      = "cluster-admin"
-  }
-
-  subject {
-    kind      = "ServiceAccount"
-    name      = kubernetes_service_account.runner[0].metadata[0].name
-    namespace = kubernetes_namespace.runner.metadata[0].name
-  }
-}
-
-# ClusterRoleBinding for AWS inner runner - grant cluster-admin permissions
+# ClusterRoleBinding for inner runner - ensure cluster-admin permissions
 resource "kubernetes_cluster_role_binding" "runner_inner_cluster_admin" {
-  count = local.create_aws ? 1 : 0
-
   metadata {
     name = "${local.prefix}-humanitec-runner-inner-cluster-admin"
   }
@@ -171,6 +75,8 @@ resource "kubernetes_cluster_role_binding" "runner_inner_cluster_admin" {
     name      = "${local.prefix}-humanitec-runner-sa-inner"
     namespace = kubernetes_namespace.runner.metadata[0].name
   }
+
+  depends_on = [helm_release.humanitec_runner]
 }
 
 # AWS agent runner RBAC resources are now managed by the Helm chart
@@ -249,10 +155,8 @@ resource "kubernetes_secret" "aws_creds" {
   }
 }
 
-# Deploy Humanitec Kubernetes Agent Runner using Helm chart
+# Deploy Humanitec Kubernetes Agent Runner using Helm chart (unified for all clouds)
 resource "helm_release" "humanitec_runner" {
-  count = local.create_aws ? 1 : 0
-
   name       = "${local.prefix}-humanitec-runner"
   repository = "oci://ghcr.io/humanitec/charts"
   chart      = "humanitec-kubernetes-agent-runner"
@@ -268,8 +172,8 @@ resource "helm_release" "humanitec_runner" {
     yamlencode({
       humanitec = {
         orgId      = var.humanitec_org
-        runnerId   = "${local.prefix}-first-deployment-eks-agent-runner"
-        privateKey = tls_private_key.agent_runner_key[0].private_key_pem
+        runnerId   = "${local.prefix}-first-deployment-agent-runner"
+        privateKey = tls_private_key.agent_runner_key.private_key_pem
         logLevel   = "debug"
       }
 
@@ -283,10 +187,17 @@ resource "helm_release" "humanitec_runner" {
         namespace            = kubernetes_namespace.runner.metadata[0].name
       }
 
-      serviceAccount = {
-        create = true
-        name   = "${local.prefix}-humanitec-runner-sa"
-      }
+      serviceAccount = merge(
+        {
+          create = true
+          name   = "${local.prefix}-humanitec-runner-sa"
+        },
+        local.create_aws ? {
+          annotations = {
+            "eks.amazonaws.com/role-arn" = aws_iam_role.humanitec_runner[0].arn
+          }
+        } : {}
+      )
     })
   ]
 
@@ -294,7 +205,9 @@ resource "helm_release" "humanitec_runner" {
     kubernetes_namespace.runner,
     tls_private_key.agent_runner_key,
     aws_iam_role.humanitec_runner,
-    kubernetes_secret.aws_creds
+    google_service_account.runner,
+    kubernetes_secret.aws_creds,
+    kubernetes_secret.google_service_account
   ]
 }
 

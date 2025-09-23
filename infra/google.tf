@@ -30,31 +30,12 @@ resource "google_container_cluster" "cluster" {
   network    = google_compute_network.vpc[0].name
   subnetwork = google_compute_subnetwork.subnet[0].name
 
-  # Enable Workload Identity
-  workload_identity_config {
-    workload_pool = "${var.gcp_project_id}.svc.id.goog"
-  }
+  # Workload Identity removed - using service account keys for simplified setup
 }
 
 
-resource "google_iam_workload_identity_pool" "wip" {
-  count = local.create_gcp ? 1 : 0
-
-  workload_identity_pool_id = "${local.prefix}-first-deployment-wip"
-}
-
-resource "google_iam_workload_identity_pool_provider" "wip_provider" {
-  count = local.create_gcp ? 1 : 0
-
-  workload_identity_pool_id          = google_iam_workload_identity_pool.wip[0].workload_identity_pool_id
-  workload_identity_pool_provider_id = "${local.prefix}-first-deploy-wip-provider"
-  attribute_mapping = {
-    "google.subject" = "assertion.sub"
-  }
-  oidc {
-    issuer_uri = "https://oidc.humanitec.dev"
-  }
-}
+# Workload Identity Pool and Provider removed - using service account keys for agent runner
+# This simplifies the setup while maintaining security through scoped service accounts
 
 resource "google_service_account" "runner" {
   count = local.create_gcp ? 1 : 0
@@ -67,13 +48,7 @@ data "google_project" "project" {
   project_id = var.gcp_project_id
 }
 
-resource "google_service_account_iam_member" "runner_workload_identity_binding" {
-  count = local.create_gcp ? 1 : 0
-
-  service_account_id = google_service_account.runner[0].name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "principal://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.wip[0].workload_identity_pool_id}/subject/${var.humanitec_org}+${local.prefix}-first-deployment-gke-runner"
-}
+# Workload Identity binding removed - using service account keys for agent runner
 
 resource "google_project_iam_custom_role" "runner" {
   count = local.create_gcp ? 1 : 0
