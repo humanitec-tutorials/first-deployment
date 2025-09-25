@@ -1,0 +1,36 @@
+workloads:
+  demo-app:
+    resources:
+      score-workload:
+        params:
+          containers:
+            main:
+              image: ghcr.io/astromechza/demo-app:latest
+              variables:
+                OVERRIDE_POSTGRES: postgres://${shared.posty.outputs.username}:${shared.posty.outputs.password}@${shared.posty.outputs.hostname}:${shared.posty.outputs.port}/${shared.posty.outputs.database}
+          metadata:
+            name: demo-app
+          service:
+            ports:
+              web:
+                port: 80
+                targetPort: 8080
+        type: score-workload
+      score2-workload:
+        params:
+          containers:
+            main:
+              image: ghcr.io/astromechza/demo-app:latest
+              variables:
+                OVERRIDE_POSTGRES: postgres://${shared.posty.outputs.username}:${shared.posty.outputs.password}@${shared.posty.outputs.hostname}:${shared.posty.outputs.port}/${shared.posty.outputs.database}
+          metadata:
+            name: demo2-app
+          service:
+            ports:
+              web:
+                port: 80
+                targetPort: 8080
+        type: score-workload
+shared:
+  posty:
+    type: postgres

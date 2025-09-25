@@ -1,6 +1,6 @@
 provider "google" {
-  project = var.gcp_project_id
-  region  = var.gcp_region
+  project = local.create_gcp ? var.gcp_project_id : "dummy-project"
+  region  = local.create_gcp ? var.gcp_region : "us-central1"
 }
 
 resource "google_compute_network" "vpc" {
@@ -29,31 +29,6 @@ resource "google_container_cluster" "cluster" {
 
   network    = google_compute_network.vpc[0].name
   subnetwork = google_compute_subnetwork.subnet[0].name
-
-  # Enable Workload Identity
-  workload_identity_config {
-    workload_pool = "${var.gcp_project_id}.svc.id.goog"
-  }
-}
-
-
-resource "google_iam_workload_identity_pool" "wip" {
-  count = local.create_gcp ? 1 : 0
-
-  workload_identity_pool_id = "${local.prefix}-first-deployment-wip"
-}
-
-resource "google_iam_workload_identity_pool_provider" "wip_provider" {
-  count = local.create_gcp ? 1 : 0
-
-  workload_identity_pool_id          = google_iam_workload_identity_pool.wip[0].workload_identity_pool_id
-  workload_identity_pool_provider_id = "${local.prefix}-first-deploy-wip-provider"
-  attribute_mapping = {
-    "google.subject" = "assertion.sub"
-  }
-  oidc {
-    issuer_uri = "https://oidc.humanitec.dev"
-  }
 }
 
 resource "google_service_account" "runner" {
@@ -64,15 +39,8 @@ resource "google_service_account" "runner" {
 }
 
 data "google_project" "project" {
+  count      = local.create_gcp ? 1 : 0
   project_id = var.gcp_project_id
-}
-
-resource "google_service_account_iam_member" "runner_workload_identity_binding" {
-  count = local.create_gcp ? 1 : 0
-
-  service_account_id = google_service_account.runner[0].name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "principal://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.wip[0].workload_identity_pool_id}/subject/${var.humanitec_org}+${local.prefix}-first-deployment-gke-runner"
 }
 
 resource "google_project_iam_custom_role" "runner" {
