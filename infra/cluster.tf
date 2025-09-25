@@ -1,4 +1,6 @@
-data "google_client_config" "current" {}
+data "google_client_config" "current" {
+  count = local.create_gcp ? 1 : 0
+}
 
 # AWS EKS Kubernetes provider configuration
 data "aws_eks_cluster" "cluster" {
@@ -12,7 +14,9 @@ data "aws_eks_cluster_auth" "cluster" {
 }
 
 # Azure AKS Kubernetes provider configuration
-data "azurerm_client_config" "current" {}
+data "azurerm_client_config" "current" {
+  count = local.create_azure ? 1 : 0
+}
 
 data "azurerm_kubernetes_cluster" "cluster" {
   count               = local.create_azure ? 1 : 0
@@ -35,7 +39,7 @@ provider "kubernetes" {
   )
 
   token = local.create_aws ? data.aws_eks_cluster_auth.cluster[0].token : (
-    local.create_gcp ? data.google_client_config.current.access_token : (
+    local.create_gcp ? data.google_client_config.current[0].access_token : (
       local.create_azure ? azurerm_kubernetes_cluster.cluster[0].kube_config.0.password : null
     )
   )
@@ -60,7 +64,7 @@ provider "helm" {
     )
 
     token = local.create_aws ? data.aws_eks_cluster_auth.cluster[0].token : (
-      local.create_gcp ? data.google_client_config.current.access_token : (
+      local.create_gcp ? data.google_client_config.current[0].access_token : (
         local.create_azure ? azurerm_kubernetes_cluster.cluster[0].kube_config.0.password : null
       )
     )

@@ -1,6 +1,6 @@
 provider "google" {
-  project = var.gcp_project_id
-  region  = var.gcp_region
+  project = local.create_gcp ? var.gcp_project_id : "dummy-project"
+  region  = local.create_gcp ? var.gcp_region : "us-central1"
 }
 
 resource "google_compute_network" "vpc" {
@@ -39,6 +39,7 @@ resource "google_service_account" "runner" {
 }
 
 data "google_project" "project" {
+  count      = local.create_gcp ? 1 : 0
   project_id = var.gcp_project_id
 }
 

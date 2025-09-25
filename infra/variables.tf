@@ -1,13 +1,19 @@
 variable "gcp_project_id" {
   description = "GCP project id"
+  type        = string
+  default     = "dummy-project"
 }
 
 variable "gcp_region" {
   description = "GCP region"
+  type        = string
+  default     = "us-central1"
 }
 
 variable "gcp_zone" {
   description = "GCP zone"
+  type        = string
+  default     = "us-central1-a"
 }
 
 variable "humanitec_org" {
@@ -39,20 +45,24 @@ variable "enabled_cloud_providers" {
 variable "aws_region" {
   description = "AWS region"
   type        = string
+  default     = "us-east-1"
 }
 
 # Azure Variables
 variable "azure_subscription_id" {
   description = "Azure subscription ID"
   type        = string
+  default     = "00000000-0000-0000-0000-000000000000"
 }
 
 variable "azure_tenant_id" {
   description = "Azure tenant ID"
   type        = string
+  default     = "00000000-0000-0000-0000-000000000000"
 }
 
 variable "azure_location" {
   description = "Azure region/location"
   type        = string
+  default     = "East US"
 }

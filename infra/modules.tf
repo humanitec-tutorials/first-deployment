@@ -28,6 +28,22 @@ resource "platform-orchestrator_provider" "aws" {
   })
 }
 
+resource "platform-orchestrator_provider" "azurerm" {
+  count = local.create_azure ? 1 : 0
+
+  id                 = "default"
+  description        = "Provider using managed identity for Azure"
+  provider_type      = "azurerm"
+  source             = "hashicorp/azurerm"
+  version_constraint = "~> 3.0"
+  configuration = jsonencode({
+    features                 = {}
+    use_msi                 = true
+    subscription_id         = var.azure_subscription_id
+    tenant_id              = var.azure_tenant_id
+  })
+}
+
 resource "platform-orchestrator_resource_type" "bucket" {
   count = local.create_gcp ? 1 : 0
 
@@ -252,7 +268,7 @@ resource "platform-orchestrator_provider" "ansibleplay" {
 }
 
 resource "platform-orchestrator_resource_type" "vm-fleet" {
-  count = local.create_gcp || local.create_aws ? 1 : 0
+  count = local.create_gcp || local.create_aws || local.create_azure ? 1 : 0
 
   id          = "vm-fleet"
   description = "A fleet of virtual machines"
@@ -277,9 +293,10 @@ resource "platform-orchestrator_resource_type" "vm-fleet" {
     }
   })
   is_developer_accessible = true
-  depends_on = [ 
+  depends_on = [
     platform-orchestrator_provider.google,
-    platform-orchestrator_provider.aws
+    platform-orchestrator_provider.aws,
+    platform-orchestrator_provider.azurerm
   ]
 }
 resource "platform-orchestrator_module" "vm_fleet_example" {
@@ -317,8 +334,26 @@ resource "platform-orchestrator_module_rule" "vm_fleet_aws" {
   module_id = platform-orchestrator_module.vm_fleet_aws[0].id
 }
 
+# Azure VM Fleet Module
+resource "platform-orchestrator_module" "vm_fleet_azure" {
+  count = local.create_azure ? 1 : 0
+
+  id = "vm-fleet-azure"
+  resource_type = platform-orchestrator_resource_type.vm-fleet[0].id
+  provider_mapping = {
+    azurerm = "azurerm.default"
+  }
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/vm-fleet/azure?ref=cj_upd"
+}
+
+resource "platform-orchestrator_module_rule" "vm_fleet_azure" {
+  count = local.create_azure ? 1 : 0
+
+  module_id = platform-orchestrator_module.vm_fleet_azure[0].id
+}
+
 resource "platform-orchestrator_module" "ansible_score_workload" {
-  count = local.create_gcp || local.create_aws ? 1 : 0
+  count = local.create_gcp || local.create_aws || local.create_azure ? 1 : 0
 
   id = "ansible-score-workload"
   resource_type = platform-orchestrator_resource_type.score-workload.id
@@ -355,7 +390,7 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
 }
 
 resource "platform-orchestrator_module_rule" "ansible_score_workload" {
-  count = local.create_gcp || local.create_aws ? 1 : 0
+  count = local.create_gcp || local.create_aws || local.create_azure ? 1 : 0
 
   module_id = platform-orchestrator_module.ansible_score_workload[0].id
   env_id = platform-orchestrator_environment.score_environment.id

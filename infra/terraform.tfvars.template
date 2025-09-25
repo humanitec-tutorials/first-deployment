@@ -20,40 +20,37 @@ humanitec_auth_token = "your-api-token-here"
 enabled_cloud_providers = ["aws"]
 
 # =============================================================================
-# AWS Configuration (if using AWS)
+# AWS Configuration (OPTIONAL - only needed if AWS is in enabled_cloud_providers)
 # =============================================================================
 
-# AWS region for resources
-aws_region = "eu-north-1"
-
-# Your AWS profile name (optional - uses default if not specified)
-# aws_profile = "default"
+# AWS region for resources (has default value)
+# aws_region = "eu-north-1"
 
 # =============================================================================
-# GCP Configuration (if using GCP)
+# GCP Configuration (OPTIONAL - only needed if GCP is in enabled_cloud_providers)
 # =============================================================================
 
-# GCP project ID
-gcp_project_id = "your-gcp-project-id"
+# GCP project ID (has default value, override for actual use)
+# gcp_project_id = "your-gcp-project-id"
 
-# GCP region for resources
-gcp_region = "europe-west3"
+# GCP region for resources (has default value)
+# gcp_region = "europe-west3"
 
-# GCP zone for resources
-gcp_zone = "europe-west3-a"
+# GCP zone for resources (has default value)
+# gcp_zone = "europe-west3-a"
 
 # =============================================================================
-# Azure Configuration (if using Azure)
+# Azure Configuration (OPTIONAL - only needed if Azure is in enabled_cloud_providers)
 # =============================================================================
 
-# Azure subscription ID
-azure_subscription_id = "your-azure-subscription-id"
+# Azure subscription ID (has default value, override for actual use)
+# azure_subscription_id = "your-azure-subscription-id"
 
-# Azure tenant ID
-azure_tenant_id = "your-azure-tenant-id"
+# Azure tenant ID (has default value, override for actual use)
+# azure_tenant_id = "your-azure-tenant-id"
 
-# Azure region/location for resources
-azure_location = "West Europe"
+# Azure region/location for resources (has default value)
+# azure_location = "West Europe"
 
 # =============================================================================
 # OPTIONAL: Resource Naming
