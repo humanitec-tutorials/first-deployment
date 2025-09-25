@@ -29,13 +29,7 @@ resource "google_container_cluster" "cluster" {
 
   network    = google_compute_network.vpc[0].name
   subnetwork = google_compute_subnetwork.subnet[0].name
-
-  # Workload Identity removed - using service account keys for simplified setup
 }
-
-
-# Workload Identity Pool and Provider removed - using service account keys for agent runner
-# This simplifies the setup while maintaining security through scoped service accounts
 
 resource "google_service_account" "runner" {
   count = local.create_gcp ? 1 : 0
@@ -47,8 +41,6 @@ resource "google_service_account" "runner" {
 data "google_project" "project" {
   project_id = var.gcp_project_id
 }
-
-# Workload Identity binding removed - using service account keys for agent runner
 
 resource "google_project_iam_custom_role" "runner" {
   count = local.create_gcp ? 1 : 0

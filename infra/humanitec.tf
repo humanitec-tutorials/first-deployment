@@ -24,24 +24,11 @@ resource "kubernetes_secret" "google_service_account" {
   }
 }
 
-# GKE Runner removed - now using unified agent runner for both GCP and AWS
-
-# RSA key no longer needed for agent runner approach
-# resource "tls_private_key" "runner_key" {
-#   count     = local.create_aws ? 1 : 0
-#   algorithm = "RSA"
-#   rsa_bits  = 2048
-# }
-
 # Generate ED25519 keypair for kubernetes-agent-runner (unified for all clouds)
 resource "tls_private_key" "agent_runner_key" {
   algorithm = "ED25519"
 }
 
-# TLS certificate resources are no longer needed for agent runner
-
-# Alternative: Use AWS IAM Authenticator for more robust authentication
-# This requires creating an aws-auth ConfigMap in the cluster
 resource "kubernetes_config_map" "aws_auth" {
   count = local.create_aws ? 1 : 0
 
@@ -71,7 +58,6 @@ resource "kubernetes_config_map" "aws_auth" {
   }
 }
 
-# Unified Agent Runner for both GCP and AWS
 resource "platform-orchestrator_kubernetes_agent_runner" "agent_runner" {
   id = "${local.prefix}-first-deployment-agent-runner"
   runner_configuration = {
@@ -94,6 +80,11 @@ resource "platform-orchestrator_kubernetes_agent_runner" "agent_runner" {
                 name      = "google-service-account"
                 mountPath = "/providers/google-service-account"
                 readOnly  = true
+              }] : [],
+              local.create_azure ? [{
+                name      = "azure-identity-token"
+                mountPath = "/var/run/secrets/azure/tokens"
+                readOnly  = true
               }] : []
             ),
             securityContext = {
@@ -114,6 +105,18 @@ resource "platform-orchestrator_kubernetes_agent_runner" "agent_runner" {
               secret = {
                 secretName = "google-service-account"
               }
+            }] : [],
+            local.create_azure ? [{
+              name = "azure-identity-token"
+              projected = {
+                sources = [{
+                  serviceAccountToken = {
+                    path              = "azure-identity-token"
+                    audience          = "api://AzureADTokenExchange"
+                    expirationSeconds = 3600
+                  }
+                }]
+              }
             }] : []
           )
         }
@@ -127,8 +130,6 @@ resource "platform-orchestrator_kubernetes_agent_runner" "agent_runner" {
     }
   }
 }
-
-# GKE runner rule removed - now using unified agent runner rule
 
 resource "platform-orchestrator_runner_rule" "agent_runner_rule" {
   runner_id = platform-orchestrator_kubernetes_agent_runner.agent_runner.id
@@ -169,9 +170,6 @@ resource "null_resource" "environment_lifecycle" {
     env_type_id       = platform-orchestrator_environment_type.environment_type.id
   }
 
-  # Make this resource depend on all the infrastructure that environments use
-  # During destroy, Terraform will destroy this resource first, then environments,
-  # then finally the infrastructure resources
   depends_on = [
     # Unified runner that environments depend on
     platform-orchestrator_kubernetes_agent_runner.agent_runner,
@@ -188,6 +186,8 @@ resource "null_resource" "environment_lifecycle" {
     helm_release.humanitec_runner,
     kubernetes_cluster_role_binding.runner_inner_cluster_admin,
     aws_iam_role.humanitec_runner,
-    google_service_account.runner
+    google_service_account.runner,
+    azurerm_user_assigned_identity.humanitec_runner,
+    azurerm_resource_group.main
   ]
 }

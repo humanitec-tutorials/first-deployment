@@ -11,35 +11,63 @@ data "aws_eks_cluster_auth" "cluster" {
   name  = aws_eks_cluster.cluster[0].name
 }
 
+# Azure AKS Kubernetes provider configuration
+data "azurerm_client_config" "current" {}
+
+data "azurerm_kubernetes_cluster" "cluster" {
+  count               = local.create_azure ? 1 : 0
+  name                = azurerm_kubernetes_cluster.cluster[0].name
+  resource_group_name = azurerm_kubernetes_cluster.cluster[0].resource_group_name
+}
+
 # Dynamic provider configuration based on enabled cloud providers
-# Note: Provider configuration is conditional based on which cloud is enabled
 provider "kubernetes" {
   host = local.create_aws ? data.aws_eks_cluster.cluster[0].endpoint : (
-    local.create_gcp ? "https://${google_container_cluster.cluster[0].endpoint}" : null
+    local.create_gcp ? "https://${google_container_cluster.cluster[0].endpoint}" : (
+      local.create_azure ? azurerm_kubernetes_cluster.cluster[0].kube_config.0.host : null
+    )
   )
-  
+
   cluster_ca_certificate = local.create_aws ? base64decode(data.aws_eks_cluster.cluster[0].certificate_authority[0].data) : (
-    local.create_gcp ? base64decode(google_container_cluster.cluster[0].master_auth[0].cluster_ca_certificate) : null
+    local.create_gcp ? base64decode(google_container_cluster.cluster[0].master_auth[0].cluster_ca_certificate) : (
+      local.create_azure ? base64decode(azurerm_kubernetes_cluster.cluster[0].kube_config.0.cluster_ca_certificate) : null
+    )
   )
-  
+
   token = local.create_aws ? data.aws_eks_cluster_auth.cluster[0].token : (
-    local.create_gcp ? data.google_client_config.current.access_token : null
+    local.create_gcp ? data.google_client_config.current.access_token : (
+      local.create_azure ? azurerm_kubernetes_cluster.cluster[0].kube_config.0.password : null
+    )
   )
+
+  # Azure uses client certificate authentication when password is null
+  client_certificate = local.create_azure ? base64decode(azurerm_kubernetes_cluster.cluster[0].kube_config.0.client_certificate) : null
+  client_key         = local.create_azure ? base64decode(azurerm_kubernetes_cluster.cluster[0].kube_config.0.client_key) : null
 }
 
 provider "helm" {
   kubernetes {
     host = local.create_aws ? data.aws_eks_cluster.cluster[0].endpoint : (
-      local.create_gcp ? "https://${google_container_cluster.cluster[0].endpoint}" : null
+      local.create_gcp ? "https://${google_container_cluster.cluster[0].endpoint}" : (
+        local.create_azure ? azurerm_kubernetes_cluster.cluster[0].kube_config.0.host : null
+      )
     )
 
     cluster_ca_certificate = local.create_aws ? base64decode(data.aws_eks_cluster.cluster[0].certificate_authority[0].data) : (
-      local.create_gcp ? base64decode(google_container_cluster.cluster[0].master_auth[0].cluster_ca_certificate) : null
+      local.create_gcp ? base64decode(google_container_cluster.cluster[0].master_auth[0].cluster_ca_certificate) : (
+        local.create_azure ? base64decode(azurerm_kubernetes_cluster.cluster[0].kube_config.0.cluster_ca_certificate) : null
+      )
     )
 
     token = local.create_aws ? data.aws_eks_cluster_auth.cluster[0].token : (
-      local.create_gcp ? data.google_client_config.current.access_token : null
+      local.create_gcp ? data.google_client_config.current.access_token : (
+        local.create_azure ? azurerm_kubernetes_cluster.cluster[0].kube_config.0.password : null
+      )
     )
+
+    # Azure uses client certificate authentication when password is null
+    client_certificate = local.create_azure ? base64decode(azurerm_kubernetes_cluster.cluster[0].kube_config.0.client_certificate) : null
+    client_key         = local.create_azure ? base64decode(azurerm_kubernetes_cluster.cluster[0].kube_config.0.client_key) : null
   }
 }
 
@@ -47,17 +75,11 @@ resource "kubernetes_namespace" "runner" {
   metadata {
     name = "${local.prefix}-humanitec-runner"
   }
+
+  timeouts {
+    delete = "15m"
+  }
 }
-
-# ServiceAccount is now managed by Helm chart for both GCP and AWS
-# The Helm chart will create the service account with proper annotations
-
-# GCP authentication uses service account keys (stored in kubernetes_secret.google_service_account)
-# No workload identity annotations needed since we removed workload identity from the cluster
-
-# RBAC is now managed by Helm chart for both GCP and AWS
-# The Helm chart will create appropriate RBAC resources
-
 # ClusterRoleBinding for inner runner - ensure cluster-admin permissions
 resource "kubernetes_cluster_role_binding" "runner_inner_cluster_admin" {
   metadata {
@@ -78,15 +100,6 @@ resource "kubernetes_cluster_role_binding" "runner_inner_cluster_admin" {
 
   depends_on = [helm_release.humanitec_runner]
 }
-
-# AWS agent runner RBAC resources are now managed by the Helm chart
-# The jobs_rbac configuration in the Helm chart creates the necessary service account and RBAC
-
-# Storage resources removed - PostgreSQL now uses ephemeral storage
-# This eliminates PVC cleanup issues during destroy operations
-
-# Secret for agent runner private key - managed by Helm chart for AWS
-# Keeping the secret creation for backwards compatibility, but Helm chart will manage its own secret
 
 # Create IAM user for inner runner (jobs need explicit AWS credentials)
 resource "aws_iam_user" "runner_user" {
@@ -187,17 +200,10 @@ resource "helm_release" "humanitec_runner" {
         namespace            = kubernetes_namespace.runner.metadata[0].name
       }
 
-      serviceAccount = merge(
-        {
-          create = true
-          name   = "${local.prefix}-humanitec-runner-sa"
-        },
-        local.create_aws ? {
-          annotations = {
-            "eks.amazonaws.com/role-arn" = aws_iam_role.humanitec_runner[0].arn
-          }
-        } : {}
-      )
+      serviceAccount = {
+        create = true
+        name   = "${local.prefix}-humanitec-runner-sa"
+      }
     })
   ]
 
@@ -206,9 +212,64 @@ resource "helm_release" "humanitec_runner" {
     tls_private_key.agent_runner_key,
     aws_iam_role.humanitec_runner,
     google_service_account.runner,
+    azurerm_user_assigned_identity.humanitec_runner,
+    azurerm_federated_identity_credential.humanitec_runner,
     kubernetes_secret.aws_creds,
     kubernetes_secret.google_service_account
   ]
+}
+
+# AWS IRSA - Add annotations after Helm chart creation
+resource "kubernetes_annotations" "aws_irsa_sa" {
+  count = local.create_aws ? 1 : 0
+
+  api_version = "v1"
+  kind        = "ServiceAccount"
+  metadata {
+    name      = "${local.prefix}-humanitec-runner-sa"
+    namespace = kubernetes_namespace.runner.metadata[0].name
+  }
+
+  annotations = {
+    "eks.amazonaws.com/role-arn" = aws_iam_role.humanitec_runner[0].arn
+  }
+
+  depends_on = [helm_release.humanitec_runner]
+}
+
+# Azure Workload Identity - Add annotations and labels after Helm chart creation
+resource "kubernetes_annotations" "azure_workload_identity_sa" {
+  count = local.create_azure ? 1 : 0
+
+  api_version = "v1"
+  kind        = "ServiceAccount"
+  metadata {
+    name      = "${local.prefix}-humanitec-runner-sa"
+    namespace = kubernetes_namespace.runner.metadata[0].name
+  }
+
+  annotations = {
+    "azure.workload.identity/client-id" = azurerm_user_assigned_identity.humanitec_runner[0].client_id
+  }
+
+  depends_on = [helm_release.humanitec_runner]
+}
+
+resource "kubernetes_labels" "azure_workload_identity_sa" {
+  count = local.create_azure ? 1 : 0
+
+  api_version = "v1"
+  kind        = "ServiceAccount"
+  metadata {
+    name      = "${local.prefix}-humanitec-runner-sa"
+    namespace = kubernetes_namespace.runner.metadata[0].name
+  }
+
+  labels = {
+    "azure.workload.identity/use" = "true"
+  }
+
+  depends_on = [helm_release.humanitec_runner]
 }
 
 

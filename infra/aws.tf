@@ -3,8 +3,9 @@ provider "aws" {
 }
 
 locals {
-  create_aws = contains(var.enabled_cloud_providers, "aws")
-  create_gcp = contains(var.enabled_cloud_providers, "gcp")
+  create_aws   = contains(var.enabled_cloud_providers, "aws")
+  create_gcp   = contains(var.enabled_cloud_providers, "gcp")
+  create_azure = contains(var.enabled_cloud_providers, "azure")
 }
 
 # VPC and networking
@@ -110,6 +111,12 @@ resource "aws_eks_node_group" "nodes" {
   }
 
   instance_types = ["t3.medium"]
+
+  timeouts {
+    create = "20m"
+    update = "20m" 
+    delete = "20m"
+  }
 
   depends_on = [
     aws_iam_role_policy_attachment.eks_worker_node_policy,
@@ -254,5 +261,3 @@ resource "aws_iam_role_policy" "humanitec_runner" {
     ]
   })
 }
-
-# EBS CSI resources removed - using local storage for demo purposes

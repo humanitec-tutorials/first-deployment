@@ -25,18 +25,34 @@ variable "prefix" {
 }
 
 variable "enabled_cloud_providers" {
-  description = "List of cloud providers to enable (valid values: 'gcp', 'aws')"
+  description = "List of cloud providers to enable (valid values: 'gcp', 'aws', 'azure')"
   type        = list(string)
   default     = ["gcp"]
 
   validation {
-    condition     = length([for provider in var.enabled_cloud_providers : provider if contains(["gcp", "aws"], provider)]) == length(var.enabled_cloud_providers)
-    error_message = "Valid values for enabled_cloud_providers are 'gcp' and 'aws'."
+    condition     = length([for provider in var.enabled_cloud_providers : provider if contains(["gcp", "aws", "azure"], provider)]) == length(var.enabled_cloud_providers)
+    error_message = "Valid values for enabled_cloud_providers are 'gcp', 'aws', and 'azure'."
   }
 }
 
 # AWS Variables
 variable "aws_region" {
   description = "AWS region"
+  type        = string
+}
+
+# Azure Variables
+variable "azure_subscription_id" {
+  description = "Azure subscription ID"
+  type        = string
+}
+
+variable "azure_tenant_id" {
+  description = "Azure tenant ID"
+  type        = string
+}
+
+variable "azure_location" {
+  description = "Azure region/location"
   type        = string
 }
