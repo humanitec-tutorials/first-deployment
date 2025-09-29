@@ -95,13 +95,23 @@ resource "azurerm_role_assignment" "aks_network_contributor" {
 }
 
 # Role assignment for Humanitec runner - Contributor on resource group
+resource "azurerm_role_assignment" "humanitec_aksmi_contributor" {
+  count = local.create_azure ? 1 : 0
+
+  scope                = "/subscriptions/${var.azure_subscription_id}"
+  role_definition_name = "Contributor"
+  principal_id         = azurerm_user_assigned_identity.aks[0].principal_id
+}
+
+# Role assignment for Humanitec runner - Contributor on resource group
 resource "azurerm_role_assignment" "humanitec_runner_contributor" {
   count = local.create_azure ? 1 : 0
 
-  scope                = azurerm_resource_group.main[0].id
+  scope                = "/subscriptions/${var.azure_subscription_id}"
   role_definition_name = "Contributor"
   principal_id         = azurerm_user_assigned_identity.humanitec_runner[0].principal_id
 }
+
 
 # Federated identity credential for Humanitec runner workload identity
 resource "azurerm_federated_identity_credential" "humanitec_runner" {

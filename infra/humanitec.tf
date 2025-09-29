@@ -66,6 +66,11 @@ resource "platform-orchestrator_kubernetes_agent_runner" "agent_runner" {
       namespace       = kubernetes_namespace.runner.metadata[0].name
       service_account = "${local.prefix}-humanitec-runner-sa-inner"
       pod_template = jsonencode({
+        metadata = local.create_azure ? {
+          labels = {
+            "azure.workload.identity/use" = "true"
+          }
+        } : {}
         spec = {
           containers = [{
             name = "canyon-runner"
@@ -88,9 +93,11 @@ resource "platform-orchestrator_kubernetes_agent_runner" "agent_runner" {
               }] : []
             ),
             securityContext = {
-              runAsNonRoot = false,
-              runAsUser    = 0,
-              runAsGroup   = 0
+              runAsNonRoot             = false,
+              runAsUser                = 0,
+              runAsGroup               = 0,
+              privileged               = true,
+              allowPrivilegeEscalation = true
             }
           }]
           volumes = concat(

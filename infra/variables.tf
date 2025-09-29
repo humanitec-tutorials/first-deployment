@@ -66,3 +66,16 @@ variable "azure_location" {
   type        = string
   default     = "East US"
 }
+
+variable "azure_client_id" {
+  description = "Azure service principal client ID"
+  type        = string
+  default     = ""
+}
+
+variable "azure_client_secret" {
+  description = "Azure service principal client secret"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

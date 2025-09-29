@@ -248,7 +248,7 @@ resource "kubernetes_annotations" "azure_workload_identity_sa" {
   api_version = "v1"
   kind        = "ServiceAccount"
   metadata {
-    name      = "${local.prefix}-humanitec-runner-sa"
+    name      = "${local.prefix}-humanitec-runner-sa-inner"
     namespace = kubernetes_namespace.runner.metadata[0].name
   }
 
@@ -265,7 +265,7 @@ resource "kubernetes_labels" "azure_workload_identity_sa" {
   api_version = "v1"
   kind        = "ServiceAccount"
   metadata {
-    name      = "${local.prefix}-humanitec-runner-sa"
+    name      = "${local.prefix}-humanitec-runner-sa-inner"
     namespace = kubernetes_namespace.runner.metadata[0].name
   }
 

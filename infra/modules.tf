@@ -32,16 +32,25 @@ resource "platform-orchestrator_provider" "azurerm" {
   count = local.create_azure ? 1 : 0
 
   id                 = "default"
-  description        = "Provider using managed identity for Azure"
+  description        = "Provider for Azure using service principal or managed identity"
   provider_type      = "azurerm"
   source             = "hashicorp/azurerm"
-  version_constraint = "~> 3.0"
-  configuration = jsonencode({
-    features                 = {}
-    use_msi                 = true
-    subscription_id         = var.azure_subscription_id
-    tenant_id              = var.azure_tenant_id
-  })
+  version_constraint = "~> 4.46"
+  configuration = jsonencode(merge(
+    {
+      "features[0]"   = {}
+      subscription_id = var.azure_subscription_id
+      tenant_id       = var.azure_tenant_id
+    },
+    var.azure_client_id != "" ? {
+      client_id     = var.azure_client_id
+      client_secret = var.azure_client_secret
+    } : {
+      # Allow all authentication methods - let Azure provider auto-detect
+      use_cli = false
+      use_aks_workload_identity = true
+    }
+  ))
 }
 
 resource "platform-orchestrator_resource_type" "bucket" {
