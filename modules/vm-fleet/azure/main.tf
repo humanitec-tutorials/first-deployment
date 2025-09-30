@@ -21,7 +21,7 @@ data "azurerm_client_config" "current" {}
 # Create a resource group for the fleet
 resource "azurerm_resource_group" "fleet" {
   name     = "vm-fleet-${random_id.fleet_id.hex}"
-  location = "westeurope"
+  location = "northeurope"
 }
 
 # Create virtual network
