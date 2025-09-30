@@ -65,6 +65,9 @@ resource "platform-orchestrator_kubernetes_agent_runner" "agent_runner" {
     job = {
       namespace       = kubernetes_namespace.runner.metadata[0].name
       service_account = "${local.prefix}-humanitec-runner-sa-inner"
+      service_account_annotations = local.create_azure ? {
+        "azure.workload.identity/client-id" = azurerm_user_assigned_identity.humanitec_runner[0].client_id
+      } : {}
       pod_template = jsonencode({
         metadata = local.create_azure ? {
           labels = {

@@ -46,7 +46,6 @@ resource "platform-orchestrator_provider" "azurerm" {
       client_id     = var.azure_client_id
       client_secret = var.azure_client_secret
     } : {
-      # Allow all authentication methods - let Azure provider auto-detect
       use_cli = false
       use_aks_workload_identity = true
     }
@@ -395,7 +394,7 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
     ssh_user = "$${resources.fleet.outputs.ssh_username}"
     ssh_private_key = "$${resources.fleet.outputs.ssh_private_key}"
   })
-  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/score-workload/ansible"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/score-workload/ansible?ref=cj_upd"
 }
 
 resource "platform-orchestrator_module_rule" "ansible_score_workload" {
