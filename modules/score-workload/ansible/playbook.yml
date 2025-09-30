@@ -34,11 +34,9 @@
       become: true
 
     - name: Add user to docker group
-      ansible.builtin.user:
-        name: "{{ ansible_user }}"
-        groups: docker
-        append: yes
+      ansible.builtin.command: usermod -aG docker {{ ansible_user }}
       become: true
+      changed_when: true
 
     - name: Reset SSH connection to pick up new group membership
       meta: reset_connection
