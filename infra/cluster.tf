@@ -75,6 +75,27 @@ provider "helm" {
   }
 }
 
+# Install CloudNativePG operator
+resource "kubernetes_namespace" "cnpg" {
+  metadata {
+    name = "cnpg-system"
+  }
+}
+
+resource "helm_release" "cloudnative_pg" {
+  name       = "cloudnative-pg"
+  repository = "https://cloudnative-pg.github.io/charts"
+  chart      = "cloudnative-pg"
+  version    = "0.23.0"
+
+  namespace        = kubernetes_namespace.cnpg.metadata[0].name
+  create_namespace = false
+
+  depends_on = [
+    kubernetes_namespace.cnpg
+  ]
+}
+
 resource "kubernetes_namespace" "runner" {
   metadata {
     name = "${local.prefix}-humanitec-runner"

@@ -217,7 +217,7 @@ resource "platform-orchestrator_module_rule" "k8s-service-account" {
 
 resource "platform-orchestrator_resource_type" "in-cluster-postgres" {
   id          = "postgres"
-  description = "An in-cluster Postgres database"
+  description = "An in-cluster Postgres database using CloudNativePG"
   output_schema = jsonencode({
     type = "object"
     properties = {
@@ -409,70 +409,21 @@ resource "platform-orchestrator_module" "in-cluster-postgres" {
   id = "in-cluster-postgres"
   resource_type = platform-orchestrator_resource_type.in-cluster-postgres.id
   provider_mapping = {
-    helm = "helm.default"
+    kubernetes = "kubernetes.default"
   }
-  module_source = "inline"
-  module_source_code = <<EOF
-terraform {
-  required_providers {
-    helm = {
-      source = "hashicorp/helm"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/postgres?ref=cj_upd"
+  module_inputs = jsonencode({
+    namespace = "$${resources.namespace.outputs.namespace}"
+  })
+  dependencies = {
+    namespace = {
+      type = platform-orchestrator_resource_type.k8s-namespace.id
     }
   }
 
-  required_version = ">= 0.14"
-}
-
-resource "random_id" "release" {
-  prefix = "db-"
-  byte_length = "5"
-}
-
-resource "random_password" "pwd" {
-  length = 16
-  special = false
-  lower = true
-  upper = true
-  number = true
-}
-
-resource "helm_release" "db" {
-  name = random_id.release.hex
-  namespace = "default"
-  repository = "oci://registry-1.docker.io/bitnamicharts"
-  chart = "postgresql"
-  version = "16.7.18"
-  set = [
-    { name = "auth.database", value = "default"},
-    { name = "auth.username", value = "db-user" },
-    { name = "auth.password", value = random_password.pwd.result },
-    { name = "primary.persistence.enabled", value = "false" },
-    { name = "readReplicas.persistence.enabled", value = "false" }
+  depends_on = [
+    platform-orchestrator_provider.k8s
   ]
-  wait = true
-}
-
-output "hostname" {
-  value = "$${random_id.release.hex}-postgresql.default.svc.cluster.local"
-}
-
-output "port" {
-  value = 5432
-}
-
-output "database" {
-  value = "default"
-}
-
-output "username" {
-  value = "db-user"
-}
-
-output "password" {
-  value = random_password.pwd.result
-  sensitive = true
-}
-EOF
 }
 
 resource "platform-orchestrator_module_rule" "in-cluster-postgres" {
