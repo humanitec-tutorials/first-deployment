@@ -165,7 +165,7 @@ resource "azurerm_linux_virtual_machine" "fleet" {
   name                = "vm-${random_id.fleet_id.hex}-${count.index + 1}"
   resource_group_name = azurerm_resource_group.fleet.name
   location            = azurerm_resource_group.fleet.location
-  size                = "Standard_B2ls_v2"
+  size                = "Standard_D2_v3"
   admin_username      = "ubuntu"
 
   # Disable password authentication in favor of SSH key authentication
