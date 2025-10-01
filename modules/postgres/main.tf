@@ -63,24 +63,3 @@ resource "kubernetes_secret" "postgres_credentials" {
     password = random_password.pwd.result
   }
 }
-
-output "hostname" {
-  value = "${random_id.release.hex}-rw.${var.namespace}.svc.cluster.local"
-}
-
-output "port" {
-  value = 5432
-}
-
-output "database" {
-  value = "default"
-}
-
-output "username" {
-  value = "db-user"
-}
-
-output "password" {
-  value     = random_password.pwd.result
-  sensitive = true
-}
