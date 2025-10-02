@@ -351,7 +351,7 @@ resource "platform-orchestrator_module" "vm_fleet_azure" {
   provider_mapping = {
     azurerm = "azurerm.default"
   }
-  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/vm-fleet/azure?ref=cj_upd"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/vm-fleet/azure"
 }
 
 resource "platform-orchestrator_module_rule" "vm_fleet_azure" {
@@ -394,7 +394,7 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
     ssh_user = "$${resources.fleet.outputs.ssh_username}"
     ssh_private_key = "$${resources.fleet.outputs.ssh_private_key}"
   })
-  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/score-workload/ansible?ref=cj_upd"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/score-workload/ansible"
 }
 
 resource "platform-orchestrator_module_rule" "ansible_score_workload" {
@@ -411,7 +411,7 @@ resource "platform-orchestrator_module" "in-cluster-postgres" {
   provider_mapping = {
     kubernetes = "kubernetes.default"
   }
-  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/postgres?ref=cj_upd"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/postgres"
   module_inputs = jsonencode({
     namespace = "$${resources.namespace.outputs.namespace}"
   })
