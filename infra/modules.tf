@@ -422,7 +422,8 @@ resource "platform-orchestrator_module" "in-cluster-postgres" {
   }
 
   depends_on = [
-    platform-orchestrator_provider.k8s
+    platform-orchestrator_provider.k8s,
+    helm_release.cloudnative_pg
   ]
 }
 
