@@ -1,10 +1,20 @@
 provider "aws" {
-  region = var.aws_region
+  region                      = var.aws_region
+
+  # Use dummy credentials when not enabled to prevent authentication attempts
+  access_key = local.create_aws ? null : "dummy"
+  secret_key = local.create_aws ? null : "dummy"
+
+  skip_credentials_validation = !local.create_aws
+  skip_metadata_api_check     = !local.create_aws
+  skip_region_validation      = !local.create_aws
+  skip_requesting_account_id  = !local.create_aws
 }
 
 locals {
-  create_aws = contains(var.enabled_cloud_providers, "aws")
-  create_gcp = contains(var.enabled_cloud_providers, "gcp")
+  create_aws   = contains(var.enabled_cloud_providers, "aws")
+  create_gcp   = contains(var.enabled_cloud_providers, "gcp")
+  create_azure = contains(var.enabled_cloud_providers, "azure")
 }
 
 # VPC and networking
@@ -25,7 +35,7 @@ resource "aws_subnet" "subnet" {
 
   vpc_id            = aws_vpc.vpc[0].id
   cidr_block        = "10.10.${count.index}.0/24"
-  availability_zone = data.aws_availability_zones.available.names[count.index]
+  availability_zone = data.aws_availability_zones.available[0].names[count.index]
 
   # Required for EKS
   map_public_ip_on_launch = true
@@ -76,6 +86,7 @@ locals {
 }
 
 data "aws_availability_zones" "available" {
+  count = local.create_aws ? 1 : 0
   state = "available"
 }
 
@@ -110,6 +121,12 @@ resource "aws_eks_node_group" "nodes" {
   }
 
   instance_types = ["t3.medium"]
+
+  timeouts {
+    create = "20m"
+    update = "20m" 
+    delete = "20m"
+  }
 
   depends_on = [
     aws_iam_role_policy_attachment.eks_worker_node_policy,
@@ -254,5 +271,3 @@ resource "aws_iam_role_policy" "humanitec_runner" {
     ]
   })
 }
-
-# EBS CSI resources removed - using local storage for demo purposes

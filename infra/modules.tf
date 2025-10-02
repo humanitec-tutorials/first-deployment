@@ -28,6 +28,30 @@ resource "platform-orchestrator_provider" "aws" {
   })
 }
 
+resource "platform-orchestrator_provider" "azurerm" {
+  count = local.create_azure ? 1 : 0
+
+  id                 = "default"
+  description        = "Provider for Azure using service principal or managed identity"
+  provider_type      = "azurerm"
+  source             = "hashicorp/azurerm"
+  version_constraint = "~> 4.46"
+  configuration = jsonencode(merge(
+    {
+      "features[0]"   = {}
+      subscription_id = var.azure_subscription_id
+      tenant_id       = var.azure_tenant_id
+    },
+    var.azure_client_id != "" ? {
+      client_id     = var.azure_client_id
+      client_secret = var.azure_client_secret
+    } : {
+      use_cli = false
+      use_aks_workload_identity = true
+    }
+  ))
+}
+
 resource "platform-orchestrator_resource_type" "bucket" {
   count = local.create_gcp ? 1 : 0
 
@@ -193,7 +217,7 @@ resource "platform-orchestrator_module_rule" "k8s-service-account" {
 
 resource "platform-orchestrator_resource_type" "in-cluster-postgres" {
   id          = "postgres"
-  description = "An in-cluster Postgres database"
+  description = "An in-cluster Postgres database using CloudNativePG"
   output_schema = jsonencode({
     type = "object"
     properties = {
@@ -252,7 +276,7 @@ resource "platform-orchestrator_provider" "ansibleplay" {
 }
 
 resource "platform-orchestrator_resource_type" "vm-fleet" {
-  count = local.create_gcp || local.create_aws ? 1 : 0
+  count = local.create_gcp || local.create_aws || local.create_azure ? 1 : 0
 
   id          = "vm-fleet"
   description = "A fleet of virtual machines"
@@ -277,9 +301,10 @@ resource "platform-orchestrator_resource_type" "vm-fleet" {
     }
   })
   is_developer_accessible = true
-  depends_on = [ 
+  depends_on = [
     platform-orchestrator_provider.google,
-    platform-orchestrator_provider.aws
+    platform-orchestrator_provider.aws,
+    platform-orchestrator_provider.azurerm
   ]
 }
 resource "platform-orchestrator_module" "vm_fleet_example" {
@@ -317,8 +342,26 @@ resource "platform-orchestrator_module_rule" "vm_fleet_aws" {
   module_id = platform-orchestrator_module.vm_fleet_aws[0].id
 }
 
+# Azure VM Fleet Module
+resource "platform-orchestrator_module" "vm_fleet_azure" {
+  count = local.create_azure ? 1 : 0
+
+  id = "vm-fleet-azure"
+  resource_type = platform-orchestrator_resource_type.vm-fleet[0].id
+  provider_mapping = {
+    azurerm = "azurerm.default"
+  }
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/vm-fleet/azure"
+}
+
+resource "platform-orchestrator_module_rule" "vm_fleet_azure" {
+  count = local.create_azure ? 1 : 0
+
+  module_id = platform-orchestrator_module.vm_fleet_azure[0].id
+}
+
 resource "platform-orchestrator_module" "ansible_score_workload" {
-  count = local.create_gcp || local.create_aws ? 1 : 0
+  count = local.create_gcp || local.create_aws || local.create_azure ? 1 : 0
 
   id = "ansible-score-workload"
   resource_type = platform-orchestrator_resource_type.score-workload.id
@@ -355,7 +398,7 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
 }
 
 resource "platform-orchestrator_module_rule" "ansible_score_workload" {
-  count = local.create_gcp || local.create_aws ? 1 : 0
+  count = local.create_gcp || local.create_aws || local.create_azure ? 1 : 0
 
   module_id = platform-orchestrator_module.ansible_score_workload[0].id
   env_id = platform-orchestrator_environment.score_environment.id
@@ -366,68 +409,22 @@ resource "platform-orchestrator_module" "in-cluster-postgres" {
   id = "in-cluster-postgres"
   resource_type = platform-orchestrator_resource_type.in-cluster-postgres.id
   provider_mapping = {
-    helm = "helm.default"
+    kubernetes = "kubernetes.default"
   }
-  module_source = "inline"
-  module_source_code = <<EOF
-terraform {
-  required_providers {
-    helm = {
-      source = "hashicorp/helm"
+  module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/postgres"
+  module_inputs = jsonencode({
+    namespace = "$${resources.namespace.outputs.namespace}"
+  })
+  dependencies = {
+    namespace = {
+      type = platform-orchestrator_resource_type.k8s-namespace.id
     }
   }
 
-  required_version = ">= 0.14"
-}
-
-resource "random_id" "release" {
-  prefix = "db-"
-  byte_length = "5"
-}
-
-resource "random_password" "pwd" {
-  length = 16
-  special = false
-  lower = true
-  upper = true
-  number = true
-}
-
-resource "helm_release" "db" {
-  name = random_id.release.hex
-  namespace = "default"
-  repository = "oci://registry-1.docker.io/bitnamicharts"
-  chart = "postgresql"
-  version = "16.7.18"
-  set = [
-    { name = "auth.database", value = "default"},
-    { name = "auth.username", value = "db-user" },
-    { name = "auth.password", value = random_password.pwd.result },
+  depends_on = [
+    platform-orchestrator_provider.k8s,
+    helm_release.cloudnative_pg
   ]
-  wait = true
-}
-
-output "hostname" {
-  value = "$${random_id.release.hex}-postgresql.default.svc.cluster.local"
-}
-
-output "port" {
-  value = 5432
-}
-
-output "database" {
-  value = "default"
-}
-
-output "username" {
-  value = "db-user"
-}
-
-output "password" {
-  value = random_password.pwd.result
-  sensitive = true
-}
-EOF
 }
 
 resource "platform-orchestrator_module_rule" "in-cluster-postgres" {
