@@ -13,11 +13,6 @@ terraform {
       version = ">= 2.9.1"
     }
 
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~>3.0"
-    }
-
     tls = {
       source  = "hashicorp/tls"
       version = "~> 4.0"
@@ -120,23 +115,23 @@ provider "azurerm" {
 #   vm_fleet_resource_type_id  = platform-orchestrator_resource_type.vm_fleet.id
 # }
 
-# module "azure" {
-#   source = "./modules/azure"
+module "azure" {
+  source = "./modules/azure"
 
-#   prefix                     = local.prefix
-#   azure_subscription_id      = var.azure_subscription_id
-#   azure_tenant_id            = var.azure_tenant_id
-#   azure_location             = var.azure_location
-#   azure_client_id            = var.azure_client_id
-#   azure_client_secret        = var.azure_client_secret
-#   humanitec_org              = var.humanitec_org
-#   humanitec_auth_token       = var.humanitec_auth_token
-#   public_key_pem             = tls_private_key.agent_runner_key.public_key_pem
-#   private_key_pem            = tls_private_key.agent_runner_key.private_key_pem
-#   project_id                 = platform-orchestrator_project.project.id
-#   env_type_id                = platform-orchestrator_environment_type.environment_type.id
-#   vm_fleet_resource_type_id  = platform-orchestrator_resource_type.vm_fleet.id
-# }
+  prefix                     = local.prefix
+  azure_subscription_id      = var.azure_subscription_id
+  azure_tenant_id            = var.azure_tenant_id
+  azure_location             = var.azure_location
+  azure_client_id            = var.azure_client_id
+  azure_client_secret        = var.azure_client_secret
+  humanitec_org              = var.humanitec_org
+  humanitec_auth_token       = var.humanitec_auth_token
+  public_key_pem             = tls_private_key.agent_runner_key.public_key_pem
+  private_key_pem            = tls_private_key.agent_runner_key.private_key_pem
+  project_id                 = platform-orchestrator_project.project.id
+  env_type_id                = platform-orchestrator_environment_type.environment_type.id
+  vm_fleet_resource_type_id  = platform-orchestrator_resource_type.vm_fleet.id
+}
 
 # TLS key for runner authentication
 resource "tls_private_key" "agent_runner_key" {
