@@ -12,14 +12,6 @@ humanitec_org = "your-org-id"
 humanitec_auth_token = "your-api-token-here"
 
 # =============================================================================
-# CLOUD PROVIDER CONFIGURATION
-# =============================================================================
-
-# Which cloud providers to enable (choose one, two, or all three)
-# Options: ["aws"], ["gcp"], ["azure"], ["aws", "gcp"], ["aws", "azure"], ["gcp", "azure"], or ["aws", "gcp", "azure"]
-enabled_cloud_providers = ["aws"]
-
-# =============================================================================
 # AWS Configuration (OPTIONAL - only needed if AWS is in enabled_cloud_providers)
 # =============================================================================
 
