@@ -1,53 +1,43 @@
-provider "google" {
-  project = local.create_gcp ? var.gcp_project_id : "dummy-project"
-  region  = local.create_gcp ? var.gcp_region : "us-central1"
-}
-
+# VPC and Networking
 resource "google_compute_network" "vpc" {
-  count = local.create_gcp ? 1 : 0
-
-  name                    = "${local.prefix}-first-deployment-vpc"
+  name                    = "${var.prefix}-first-deployment-vpc"
   auto_create_subnetworks = "false"
 }
 
 resource "google_compute_subnetwork" "subnet" {
-  count = local.create_gcp ? 1 : 0
-
-  name          = "${local.prefix}-first-deployment-subnet"
+  name          = "${var.prefix}-first-deployment-subnet"
   region        = var.gcp_region
-  network       = google_compute_network.vpc[0].name
+  network       = google_compute_network.vpc.name
   ip_cidr_range = "10.10.0.0/24"
 }
 
+# GKE Cluster
 resource "google_container_cluster" "cluster" {
-  count = local.create_gcp ? 1 : 0
-
-  name     = "${local.prefix}-first-deployment-gke"
+  name     = "${var.prefix}-first-deployment-gke"
   location = var.gcp_region
 
   initial_node_count = 2
 
-  network    = google_compute_network.vpc[0].name
-  subnetwork = google_compute_subnetwork.subnet[0].name
+  network    = google_compute_network.vpc.name
+  subnetwork = google_compute_subnetwork.subnet.name
+
+  deletion_protection = false
 }
 
+# Service Account for Runner
 resource "google_service_account" "runner" {
-  count = local.create_gcp ? 1 : 0
-
-  account_id   = "${local.prefix}-first-deployment-runner"
+  account_id   = "${var.prefix}-first-deployment-runner"
   display_name = "Used by Humanitec Orchestrator to access GKE clusters for launching runners"
 }
 
 data "google_project" "project" {
-  count      = local.create_gcp ? 1 : 0
   project_id = var.gcp_project_id
 }
 
+# IAM Custom Role for Runner
 resource "google_project_iam_custom_role" "runner" {
-  count = local.create_gcp ? 1 : 0
-
-  role_id     = "${local.prefix}_first_deployment_runner_role"
-  title       = "${local.prefix}_first_deployment_runner_role"
+  role_id     = "${var.prefix}_first_deployment_runner_role"
+  title       = "${var.prefix}_first_deployment_runner_role"
   description = "Access for the Humanitec Orchestrator to GKE clusters for launching runners"
   project     = var.gcp_project_id
 
@@ -62,7 +52,7 @@ resource "google_project_iam_custom_role" "runner" {
     "container.nodes.get",
     "container.operations.get",
     "container.operations.list",
-    
+
     # Storage permissions
     "storage.buckets.create",
     "storage.buckets.delete",
@@ -78,7 +68,7 @@ resource "google_project_iam_custom_role" "runner" {
     "storage.objects.get",
     "storage.objects.list",
     "storage.objects.update",
-    
+
     # Pub/Sub permissions
     "pubsub.topics.create",
     "pubsub.topics.delete",
@@ -95,7 +85,7 @@ resource "google_project_iam_custom_role" "runner" {
     "pubsub.snapshots.get",
     "pubsub.snapshots.list",
     "pubsub.snapshots.update",
-    
+
     # IAM permissions
     "iam.serviceAccounts.get",
     "iam.serviceAccounts.getIamPolicy",
@@ -124,7 +114,7 @@ resource "google_project_iam_custom_role" "runner" {
     "iam.workloadIdentityPoolProviders.create",
     "iam.workloadIdentityPoolProviders.delete",
     "iam.workloadIdentityPoolProviders.update",
-    
+
     # Compute permissions
     "compute.instances.get",
     "compute.instances.list",
@@ -234,9 +224,26 @@ resource "google_project_iam_custom_role" "runner" {
 }
 
 resource "google_project_iam_member" "runner_role_binding" {
-  count = local.create_gcp ? 1 : 0
-
   project = var.gcp_project_id
-  role    = "projects/${var.gcp_project_id}/roles/${google_project_iam_custom_role.runner[0].role_id}"
-  member  = "serviceAccount:${google_service_account.runner[0].email}"
+  role    = "projects/${var.gcp_project_id}/roles/${google_project_iam_custom_role.runner.role_id}"
+  member  = "serviceAccount:${google_service_account.runner.email}"
+}
+
+# Service Account Key for Runner
+resource "google_service_account_key" "runner_key" {
+  service_account_id = google_service_account.runner.name
+}
+
+# Kubernetes Secret for GCP Service Account
+resource "kubernetes_secret" "google_service_account" {
+  metadata {
+    name      = "google-service-account"
+    namespace = kubernetes_namespace.runner.metadata[0].name
+  }
+
+  type = "Opaque"
+
+  data = {
+    "credentials.json" = base64decode(google_service_account_key.runner_key.private_key)
+  }
 }
