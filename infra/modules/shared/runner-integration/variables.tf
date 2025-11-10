@@ -24,11 +24,11 @@ variable "runner_inner_service_account_name" {
 }
 
 variable "cloud_provider" {
-  description = "Cloud provider (gcp, aws, azure)"
+  description = "Cloud provider (gcp, aws, azure, local)"
   type        = string
   validation {
-    condition     = contains(["gcp", "aws", "azure"], var.cloud_provider)
-    error_message = "cloud_provider must be one of: gcp, aws, azure"
+    condition     = contains(["gcp", "aws", "azure", "local"], var.cloud_provider)
+    error_message = "cloud_provider must be one of: gcp, aws, azure, local"
   }
 }
 

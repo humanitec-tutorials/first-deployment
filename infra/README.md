@@ -15,6 +15,7 @@ This infrastructure uses a **provider-per-module architecture** where each cloud
 ├── outputs.tf                # Common outputs (prefix, org, project)
 ├── destroy-order.sh          # Safe destruction script with proper ordering
 └── modules/
+    ├── local/                # Local KinD module (Kubernetes in Docker)
     ├── gcp/                  # GCP module (GKE + Humanitec resources + environments)
     ├── aws/                  # AWS module (EKS + Humanitec resources + environments)
     ├── azure/                # Azure module (AKS + Humanitec resources + environments)
@@ -24,10 +25,23 @@ This infrastructure uses a **provider-per-module architecture** where each cloud
 
 ## Quick Start
 
-### 1. Enable Your Cloud(s)
+### 1. Choose Your Environment(s)
 
-Edit [main.tf](main.tf) and uncomment the module(s) for your cloud provider(s):
+Edit [main.tf](main.tf) to enable your desired environment(s):
 
+#### Local Development (Enabled by Default)
+```hcl
+# Local KinD - Perfect for development without cloud costs
+module "local" {
+  source = "./modules/local"
+  ...
+}
+```
+**Requirements**: Docker + KinD CLI
+**Access**: `http://*.localtest.me` (auto-resolves to 127.0.0.1)
+**See**: [modules/local/README.md](modules/local/README.md)
+
+#### Cloud Environments (Comment/Uncomment as Needed)
 ```hcl
 # Enable GCP
 # module "gcp" {
@@ -36,19 +50,19 @@ Edit [main.tf](main.tf) and uncomment the module(s) for your cloud provider(s):
 # }
 
 # Enable AWS
-module "aws" {
-  source = "./modules/aws"
-  ...
-}
+# module "aws" {
+#   source = "./modules/aws"
+#   ...
+# }
 
-# Enable Azure  
+# Enable Azure
 # module "azure" {
 #   source = "./modules/azure"
 #   ...
 # }
 ```
 
-**Note**: You can enable multiple clouds simultaneously!
+**Note**: You can enable multiple environments simultaneously!
 
 ### 2. Configure Variables
 
@@ -75,12 +89,21 @@ terraform apply
 
 ### 4. Choose Your Deployment Target
 
-Each cloud creates its own environments:
+Each module creates its own environments:
+- **Local**: `{prefix}-local-dev`
 - **AWS**: `aws-dev`, `aws-score`
 - **GCP**: `gcp-dev`, `gcp-score`
 - **Azure**: `azure-dev`, `azure-score`
 
-Deploy to AWS by targeting the `aws-dev` environment, or to GCP by targeting `gcp-dev`, etc.
+Deploy locally by targeting `{prefix}-local-dev`, or to cloud by targeting cloud-specific environments:
+
+```bash
+# Deploy locally
+hctl deploy myapp {prefix}-local-dev ./score.yaml
+
+# Deploy to cloud
+hctl deploy myapp gcp-dev ./score.yaml
+```
 
 ### 5. Destroy
 
@@ -145,17 +168,20 @@ To deploy to multiple clouds:
 
 2. **Run terraform apply** - All clouds will be provisioned
 
-3. **Deploy to specific cloud** by environment name:
+3. **Deploy to specific environment** by name:
+   - `{prefix}-local-dev` → Deploys to local KinD cluster
    - `aws-dev` / `aws-score` → Deploys to AWS
    - `gcp-dev` / `gcp-score` → Deploys to GCP
    - `azure-dev` / `azure-score` → Deploys to Azure
 
 ## Module Documentation
 
-See [modules/README.md](modules/README.md) for detailed information about:
-- Module structure and design
-- Variables and outputs
-- How to add new cloud providers
+Detailed documentation for each module:
+- **[Local KinD Module](modules/local/README.md)** - Local development with KinD
+- **[modules/README.md](modules/README.md)** - Cloud module structure and design
+  - Module structure and design
+  - Variables and outputs
+  - How to add new cloud providers
 
 ## Safe Destruction
 
@@ -168,13 +194,15 @@ The [destroy-order.sh](destroy-order.sh) script ensures safe teardown:
 
 ## Environment Naming Convention
 
-Environments follow the pattern `{cloud}-{purpose}`:
-- `aws-dev` - AWS development environment
-- `aws-score` - AWS environment for Score/VM-based workloads
-- `gcp-dev` - GCP development environment
-- `gcp-score` - GCP environment for Score/VM-based workloads
-- `azure-dev` - Azure development environment
-- `azure-score` - Azure environment for Score/VM-based workloads
+Environments follow these patterns:
+- **Local**: `{prefix}-local-dev` - Local KinD cluster for development
+- **Cloud**: `{cloud}-{purpose}` - Cloud-specific environments
+  - `aws-dev` - AWS development environment
+  - `aws-score` - AWS environment for Score/VM-based workloads
+  - `gcp-dev` - GCP development environment
+  - `gcp-score` - GCP environment for Score/VM-based workloads
+  - `azure-dev` - Azure development environment
+  - `azure-score` - Azure environment for Score/VM-based workloads
 
 ## Benefits
 

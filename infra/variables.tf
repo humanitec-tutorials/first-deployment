@@ -79,3 +79,28 @@ variable "azure_client_secret" {
   default     = ""
   sensitive   = true
 }
+
+# Local KinD Variables
+variable "local_cluster_name" {
+  description = "Name suffix for the local KinD cluster (will be prefixed with var.prefix)"
+  type        = string
+  default     = "first-deployment-local"
+}
+
+variable "local_base_domain" {
+  description = "Base domain for local cluster ingress (defaults to localtest.me which resolves to 127.0.0.1)"
+  type        = string
+  default     = "localtest.me"
+}
+
+variable "local_ingress_http_port" {
+  description = "Host port to bind for HTTP traffic on local KinD cluster"
+  type        = number
+  default     = 80
+}
+
+variable "local_ingress_https_port" {
+  description = "Host port to bind for HTTPS traffic on local KinD cluster"
+  type        = number
+  default     = 443
+}
