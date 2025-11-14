@@ -31,7 +31,6 @@ resource "google_service_account" "runner" {
 }
 
 data "google_project" "project" {
-  count      = local.create_gcp ? 1 : 0
   project_id = var.gcp_project_id
 }
 
