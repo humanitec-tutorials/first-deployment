@@ -20,7 +20,7 @@ resource "helm_release" "humanitec_runner" {
   name       = "${var.prefix}-humanitec-runner"
   repository = "oci://ghcr.io/humanitec/charts"
   chart      = "humanitec-kubernetes-agent-runner"
-  version    = "0.1.0"
+  version    = "0.1.10"
 
   namespace        = var.runner_namespace
   create_namespace = false
@@ -40,9 +40,9 @@ resource "helm_release" "humanitec_runner" {
         create = true
       }
 
-      jobs_rbac = {
+      jobsRbac = {
         create               = true
-        service_account_name = var.runner_inner_service_account_name
+        serviceAccountName = var.runner_inner_service_account_name
         namespace            = var.runner_namespace
       }
 
