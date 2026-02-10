@@ -60,6 +60,8 @@ resource "helm_release" "humanitec_runner" {
       value = var.private_key_pem
     }
   ]
+
+  depends_on = [platform-orchestrator_kubernetes_agent_runner.agent_runner]
 }
 
 # ClusterRoleBinding for inner runner - ensure cluster-admin permissions
@@ -247,8 +249,6 @@ resource "platform-orchestrator_kubernetes_agent_runner" "agent_runner" {
       namespace = var.runner_namespace
     }
   }
-
-  depends_on = [helm_release.humanitec_runner]
 }
 
 # Runner rule

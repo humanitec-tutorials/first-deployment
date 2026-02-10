@@ -7,7 +7,9 @@ resource "platform-orchestrator_environment" "dev" {
   env_type_id = var.env_type_id
 
   depends_on = [
-    module.runner  # Natural dependency - wait for AWS runner to be ready
+    module.runner,
+    kubectl_manifest.gateway_api_crds,
+    helm_release.envoy_gateway
   ]
 }
 
@@ -17,7 +19,9 @@ resource "platform-orchestrator_environment" "score" {
   env_type_id = var.env_type_id
 
   depends_on = [
-    module.runner  # Natural dependency - wait for AWS runner to be ready
+    module.runner,
+    kubectl_manifest.gateway_api_crds,
+    helm_release.envoy_gateway
   ]
 }
 

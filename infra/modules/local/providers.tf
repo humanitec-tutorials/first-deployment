@@ -17,3 +17,8 @@ provider "helm" {
     config_context = local.kind_context
   }
 }
+
+provider "kubectl" {
+  config_path    = local.kubeconfig_path
+  config_context = local.kind_context
+}

@@ -117,6 +117,37 @@ This script ensures proper ordering: environments → Humanitec resources → in
 
 ## Key Features
 
+### Gateway API / HTTPRoute Support
+
+All environments (local, GCP, AWS, Azure) come with **Envoy Gateway** pre-installed, providing native support for Kubernetes Gateway API and HTTPRoute resources. This gives you:
+
+- ✅ **Cloud-agnostic routing** - Same HTTPRoute works everywhere
+- ✅ **Advanced traffic management** - Canary deployments, header-based routing, traffic splitting
+- ✅ **Modern API** - Successor to Kubernetes Ingress with typed CRDs
+- ✅ **Multi-protocol** - HTTP, HTTPS, TCP, UDP, gRPC
+
+**Example HTTPRoute**:
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: my-app
+spec:
+  parentRefs:
+    - name: default-gateway
+      namespace: envoy-gateway-system
+  hostnames:
+    - "myapp.example.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: my-service
+          port: 8080
+```
+
 ### Environments-per-Cloud Architecture
 
 Each cloud module creates its own environments (e.g., `aws-dev`, `gcp-dev`). This means:

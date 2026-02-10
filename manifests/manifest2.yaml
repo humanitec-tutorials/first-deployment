@@ -16,5 +16,15 @@ workloads:
                 port: 80
                 targetPort: 8080
         type: score-workload
+      route:
+        type: route
+        params:
+          hostname: funnyco.de
+          path: /
+          service: demo-app
+          service_port: 80
       db:
         type: postgres
+      ns:
+        type: k8s-namespace
+        id: main

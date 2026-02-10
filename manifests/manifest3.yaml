@@ -1,3 +1,6 @@
+shared:
+  posty:
+    type: postgres
 workloads:
   demo-app:
     resources:
@@ -31,6 +34,17 @@ workloads:
                 port: 80
                 targetPort: 8080
         type: score-workload
-shared:
-  posty:
-    type: postgres
+      route:
+        type: route
+        params:
+          hostname: funnyco.de
+          path: /
+          service: demo-app
+          service_port: 80
+      route2:
+        type: route
+        params:
+          hostname: demo2.funnyco.de
+          path: /
+          service: demo2-app
+          service_port: 80

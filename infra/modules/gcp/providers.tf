@@ -24,3 +24,14 @@ provider "helm" {
     }
   }
 }
+
+provider "kubectl" {
+  host                   = "https://${google_container_cluster.cluster.endpoint}"
+  cluster_ca_certificate = base64decode(google_container_cluster.cluster.master_auth[0].cluster_ca_certificate)
+  load_config_file       = false
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "gke-gcloud-auth-plugin"
+  }
+}

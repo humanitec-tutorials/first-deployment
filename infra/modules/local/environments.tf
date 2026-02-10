@@ -5,5 +5,9 @@ resource "platform-orchestrator_environment" "local_dev" {
   env_type_id  = var.env_type_id
   display_name = "Local Development (KinD)"
 
-  depends_on = [module.runner]
+  depends_on = [
+    module.runner,
+    null_resource.gateway_api_crds,
+    helm_release.envoy_gateway
+  ]
 }

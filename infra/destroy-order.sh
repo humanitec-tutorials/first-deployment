@@ -83,6 +83,11 @@ terraform destroy \
     -target="module.azure.platform-orchestrator_environment.score" \
     -auto-approve 2>/dev/null
 
+# Try to destroy Local environment
+terraform destroy \
+    -target="module.local.platform-orchestrator_environment.local_dev" \
+    -auto-approve 2>/dev/null
+
 # Re-enable errexit
 set -e
 

@@ -20,5 +20,13 @@ terraform {
       source  = "humanitec/platform-orchestrator"
       version = ">= 2.9.1"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
+    }
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = "~> 1.14"
+    }
   }
 }

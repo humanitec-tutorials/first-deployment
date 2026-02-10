@@ -106,6 +106,7 @@ resource "platform-orchestrator_module" "in_cluster_postgres" {
   dependencies = {
     namespace = {
       type = platform-orchestrator_resource_type.k8s_namespace.id
+      id   = "main"
     }
   }
 
@@ -163,6 +164,7 @@ resource "platform-orchestrator_module" "score_k8s" {
   dependencies = {
     ns = {
       type = platform-orchestrator_resource_type.k8s_namespace.id
+      id   = "main"
     }
   }
 }
@@ -234,10 +236,6 @@ resource "platform-orchestrator_module" "ansible_score_workload" {
   module_source = "git::https://github.com/humanitec-tutorials/first-deployment//modules/score-workload/ansible"
 }
 
-# NOTE: ansible_score_workload module rules are now defined in each cloud module
-# This allows cloud-specific environments (aws-score, gcp-score, azure-score)
-# See modules/*/environments.tf for the cloud-specific rules
-
 # Environment Type
 resource "platform-orchestrator_environment_type" "environment_type" {
   id           = "${local.prefix}-development"
@@ -245,14 +243,55 @@ resource "platform-orchestrator_environment_type" "environment_type" {
 }
 
 # Project
-# Note: Ensure at least one cloud module is enabled before applying
 resource "platform-orchestrator_project" "project" {
   id = "${local.prefix}-tutorial"
 }
 
-# NOTE: Environments are now created in each cloud module
-# This provides better isolation and natural dependencies
-# See modules/*/environments.tf for cloud-specific environments:
-# - aws-dev, aws-score (AWS environments)
-# - gcp-dev, gcp-score (GCP environments)
-# - azure-dev, azure-score (Azure environments)
+resource "platform-orchestrator_resource_type" "route_type" {
+  id                      = "route"
+  description             = "HTTP route resource type"
+  is_developer_accessible = "true"
+  output_schema = jsonencode({
+    "type" : "object",
+    "properties" : {}
+  })
+}
+
+resource "platform-orchestrator_module" "route" {
+  id            = "http-route"
+  resource_type = platform-orchestrator_resource_type.route_type.id
+  module_source = "git::https://github.com/humanitec-tf-modules/route-kubernetes-http-route"
+  depends_on = [ platform-orchestrator_provider.k8s ]
+  provider_mapping = {
+    kubernetes = "kubernetes.default"
+  }
+  dependencies = {
+    ns = {
+      type = platform-orchestrator_resource_type.k8s_namespace.id
+      id   = "main"
+    }
+  }
+  module_inputs = jsonencode({
+    namespace         = "$${resources.ns.outputs.namespace}"
+    gateways          = ["default-gateway"]
+    gateway_namespace = "envoy-gateway-system"
+  })
+  module_params = {
+    hostname = {
+      type = "string"
+    }
+    path = {
+      type = "string"
+    }
+    service = {
+      type = "string"
+    }
+    service_port = {
+      type = "number"
+    }
+  }
+}
+
+resource "platform-orchestrator_module_rule" "route_module_rule" {
+  module_id = platform-orchestrator_module.route.id
+}
